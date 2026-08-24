@@ -14,7 +14,8 @@ demo-bills/ Exact-byte sample PDFs for the documented OCR fallback
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22.23.2 (pinned in `.nvmrc` and `.node-version`)
+- npm 10.9.8 (bundled with the pinned Node release)
 - PostgreSQL
 - A production `JWT_SECRET` containing at least 32 characters
 
@@ -24,7 +25,7 @@ demo-bills/ Exact-byte sample PDFs for the documented OCR fallback
 
 ```bash
 cd backend
-npm install
+npm ci
 cp .env.example .env
 # Edit .env and provide DATABASE_URL and JWT_SECRET.
 npm run db:generate
@@ -41,7 +42,7 @@ In a second terminal:
 
 ```bash
 cd frontend
-npm install
+npm ci
 cp .env.example .env.local
 npm run dev
 ```
