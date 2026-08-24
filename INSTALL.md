@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- Node.js 20+
-- npm
+- Node.js 22.23.2 (pinned in `.nvmrc` and `.node-version`)
+- npm 10.9.8 (bundled with the pinned Node release)
 - PostgreSQL
 
 The application does not fall back to a JSON database. A reachable PostgreSQL database is required for backend startup and runtime workflows.
@@ -12,7 +12,7 @@ The application does not fall back to a JSON database. A reachable PostgreSQL da
 
 ```bash
 cd backend
-npm install
+npm ci
 cp .env.example .env
 ```
 
@@ -90,15 +90,11 @@ Use the matching account for each role. Role access comes from the authenticated
 cd frontend
 npm run build
 
-# Backend syntax
+# Backend syntax and Prisma schema
 cd ../backend
-node --check src/server.js
-node --check src/fixed-routes.js
-node --check src/ocr.js
-
-# Prisma (requires DATABASE_URL, though schema validation need not connect)
+npm run check:syntax
 npm run db:generate
-npx prisma validate
+npm run db:validate
 ```
 
 Then start both applications and verify login, role restrictions, grant ownership, expense submission/correction/decisions, UC transitions/PDFs, CSV exports, OCR, downloads, and safe error responses against a disposable PostgreSQL database.

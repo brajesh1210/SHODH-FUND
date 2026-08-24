@@ -50,6 +50,14 @@ This tree contains the cumulative implementation based on public `main` commit `
 - Replaced hardcoded dashboard/platform metrics with record-derived values, qualified illustrative values, explicit configuration status, or honest unavailable/error states.
 - Repaired notification “Mark all as read,” grant links, loading/empty/error states, responsive forms, mobile actions, downloads, and role-aware dashboards.
 
+### Continuous integration and dependency safety
+
+- Pinned the repository runtime to Node.js 22.23.2 and npm 10.9.8.
+- Added least-privilege GitHub Actions checks for frontend lint, TypeScript, build, backend syntax, Prisma generation/schema validation, and production dependency audits.
+- Added pull-request dependency review with high-severity blocking and immutable action commit references.
+- Added weekly grouped Dependabot updates for both npm applications and GitHub Actions.
+- Added a pull-request template covering secrets, validation, database impact, deployment evidence, and rollback.
+
 ### Documentation and cleanup
 
 - Updated setup documentation for PostgreSQL, current API/session behavior, OCR provider behavior, and production secret requirements.
