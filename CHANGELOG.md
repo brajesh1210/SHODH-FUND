@@ -89,3 +89,13 @@ This tree contains the cumulative implementation based on the Phase 3 `main` com
 - Added target-specific preflight commands plus a Windows-safe local Prisma CLI migration launcher.
 - Added unit coverage for production/staging/local target classification and migration safeguards.
 - Added a practical database operations runbook covering snapshots, staging-first migrations, deployment verification, forward-fix recovery, and explicit demo-data rules.
+
+## Phase 7 — private bill storage and OCR provenance
+
+- Added the `ExpenseDocument` database model and checked-in migration for private document metadata, digest, MIME, size, uploader, OCR provenance, current/replacement state, and audit history.
+- Added a backend-only S3-compatible object-storage adapter supporting no-card Backblaze B2 and optional Cloudflare R2, plus an isolated in-memory test adapter.
+- Added magic-byte validation for PDF/JPEG/PNG/WebP bill files, 8 MB upload limits, randomized private object keys, server-side authorized downloads, replacement handling, and object cleanup after failed metadata writes.
+- Added private document indicators/download links in PI expense records and Finance verification.
+- Added document upload/download, authorization, file-validation, storage-configuration, and byte-preservation test coverage.
+- Added no-card Backblaze B2 bucket/key and deployment guidance in `DOCUMENT-STORAGE.md`; Cloudflare R2 remains optional.
+- Configured the B2 SDK client to use path-style requests and avoid optional checksum headers that can be rejected by B2's S3-compatible API.

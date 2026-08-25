@@ -6,10 +6,14 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const addFixedRoutes = require('./fixed-routes');
+const { createMemoryStorage, createObjectStorage } = require('./storage/object-storage');
 const { deploymentEnvironment, publicReadinessPayload } = require('./runtime');
 
 const app = express();
 const prisma = new PrismaClient();
+const objectStorage = process.env.SHODHFUND_TEST_OBJECT_STORAGE === 'true'
+  ? createMemoryStorage()
+  : createObjectStorage(process.env);
 const PORT = Number(process.env.PORT || 4000);
 const configuredJwtSecret = process.env.JWT_SECRET;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -181,7 +185,8 @@ addFixedRoutes({
   optionalAuth,
   requireRole,
   signToken,
-  logAction
+  logAction,
+  storage: objectStorage
 });
 
 app.use((_req, res) => {

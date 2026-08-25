@@ -4,6 +4,12 @@ const multer = require('multer');
 const PDFDocument = require('pdfkit');
 const { createAIService } = require('./ai/service');
 const { extractBill } = require('./ocr');
+const {
+  MAX_DOCUMENT_BYTES,
+  safeDownloadName,
+  storageKey,
+  validateBillFile
+} = require('./storage/documents');
 
 // Used when an account is absent or has an unsupported legacy password value so
 // credential checks still perform one bcrypt operation without accepting plaintext.
@@ -61,6 +67,15 @@ const NOTIFICATION_TYPES = new Set([
 ]);
 
 const OBJECTION_STATUSES = new Set(['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED']);
+
+const CURRENT_DOCUMENT_INCLUDE = {
+  documents: {
+    where: { isCurrent: true, deletedAt: null },
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    include: { uploadedBy: { select: { id: true, name: true } } }
+  }
+};
 
 function number(value) {
   const parsed = Number(value);
@@ -166,21 +181,42 @@ function serializeBudgetHead(head) {
   };
 }
 
+function serializeDocument(document, expenseId) {
+  if (!document) return null;
+  return {
+    id: document.id,
+    originalName: document.originalName,
+    mimeType: document.mimeType,
+    sizeBytes: Number(document.sizeBytes) || 0,
+    sha256: document.sha256,
+    ocrSource: document.ocrSource || null,
+    ocrModel: document.ocrModel || null,
+    createdAt: document.createdAt,
+    uploadedBy: document.uploadedBy
+      ? { id: document.uploadedBy.id, name: document.uploadedBy.name }
+      : undefined,
+    downloadUrl: `/api/expenses/${encodeURIComponent(expenseId)}/document`
+  };
+}
+
 function serializeExpense(expense) {
-  const budgetHead = expense.budgetHead
-    ? serializeBudgetHead(expense.budgetHead)
+  const { documents, billUrl: _legacyBillUrl, ...rawExpense } = expense;
+  const budgetHead = rawExpense.budgetHead
+    ? serializeBudgetHead(rawExpense.budgetHead)
     : null;
+  const currentDocument = Array.isArray(documents) ? documents[0] : null;
 
   return {
-    ...expense,
-    amount: number(expense.amount),
-    date: dateOnly(expense.date),
-    vendor: expense.vendorName || '',
-    invoice: expense.invoiceNumber || '',
-    gst: expense.gstNumber || '',
+    ...rawExpense,
+    amount: number(rawExpense.amount),
+    date: dateOnly(rawExpense.date),
+    vendor: rawExpense.vendorName || '',
+    invoice: rawExpense.invoiceNumber || '',
+    gst: rawExpense.gstNumber || '',
     head: budgetHead?.name || '',
     budgetHead,
-    compliance: expense.complianceStatus || 'PENDING'
+    compliance: rawExpense.complianceStatus || 'PENDING',
+    document: serializeDocument(currentDocument, rawExpense.id)
   };
 }
 
@@ -380,7 +416,8 @@ module.exports = function addFixedRoutes({
   optionalAuth,
   requireRole,
   signToken,
-  logAction
+  logAction,
+  storage
 }) {
   const auth = [requireAuth];
   const aiService = createAIService();
@@ -406,12 +443,7 @@ module.exports = function addFixedRoutes({
         ocr: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
           ? 'configured'
           : 'not-configured',
-        storage:
-          process.env.R2_ENDPOINT &&
-          process.env.R2_ACCESS_KEY_ID &&
-          process.env.R2_SECRET_ACCESS_KEY
-            ? 'configured'
-            : 'not-configured'
+        storage: storage?.configured ? 'configured' : 'not-configured'
       };
 
       res.status(databaseReady ? 200 : 503).json({
@@ -903,7 +935,8 @@ module.exports = function addFixedRoutes({
         budgetHead: true,
         submittedBy: { select: { id: true, name: true } },
         approvals: { include: { approver: { select: { name: true, role: true } } } },
-        anomalies: true
+        anomalies: true,
+        ...CURRENT_DOCUMENT_INCLUDE
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -918,7 +951,8 @@ module.exports = function addFixedRoutes({
         budgetHead: true,
         submittedBy: { select: { id: true, name: true, email: true } },
         approvals: { include: { approver: { select: { name: true, role: true } } } },
-        anomalies: true
+        anomalies: true,
+        ...CURRENT_DOCUMENT_INCLUDE
       }
     });
     if (!expense) return res.status(404).json({ error: 'Expense not found.' });
@@ -1029,7 +1063,6 @@ module.exports = function addFixedRoutes({
               invoiceNumber,
               gstNumber: cleanText(req.body?.gstNumber ?? req.body?.gst, 30) || null,
               description,
-              billUrl: cleanText(req.body?.billUrl, 500) || null,
               aiExtracted: verifyOcrProof(
                 req.body?.aiExtractionProof,
                 req.user.id,
@@ -1047,7 +1080,8 @@ module.exports = function addFixedRoutes({
               grant: { select: { id: true, title: true, grantCode: true, piId: true } },
               budgetHead: true,
               anomalies: true,
-              approvals: true
+              approvals: true,
+              ...CURRENT_DOCUMENT_INCLUDE
             }
           });
 
@@ -1085,7 +1119,8 @@ module.exports = function addFixedRoutes({
               grant: { select: { id: true, title: true, grantCode: true, piId: true } },
               budgetHead: true,
               anomalies: true,
-              approvals: true
+              approvals: true,
+              ...CURRENT_DOCUMENT_INCLUDE
             }
           });
           return { expense: saved, complianceStatus, budgetHeadId: currentHead.id };
@@ -2349,16 +2384,188 @@ module.exports = function addFixedRoutes({
     }
   });
 
+  const runSingleBillUpload = (req, res, next) => {
+    upload.single('file')(req, res, (error) => {
+      if (!error) return next();
+      const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      return res.status(status).json({
+        error: error.message || 'The bill upload is invalid.'
+      });
+    });
+  };
+
+  app.post(
+    '/api/expenses/:id/document',
+    ...auth,
+    requireRole(ROLE.PI, ROLE.ADMIN),
+    runSingleBillUpload,
+    safeAsync(async (req, res) => {
+      if (!storage?.configured) {
+        return res.status(503).json({
+          error: 'Private bill storage is not configured for this environment.'
+        });
+      }
+
+      const expense = await prisma.expense.findUnique({
+        where: { id: req.params.id },
+        include: { grant: { select: { piId: true } } }
+      });
+      if (!expense) return res.status(404).json({ error: 'Expense not found.' });
+      if (!expenseReadableBy(expense, req.user)) {
+        return res.status(403).json({ error: 'You do not have access to this expense.' });
+      }
+      if (!['DRAFT', 'SUBMITTED', 'CORRECTION_REQUESTED'].includes(expense.status)) {
+        return res.status(409).json({
+          error: 'A bill can be attached only while the expense is draft, submitted, or returned for correction.'
+        });
+      }
+
+      const file = validateBillFile(req.file);
+      const documentId = `doc_${crypto.randomUUID().replace(/-/g, '')}`;
+      const objectKey = storageKey({
+        expenseId: expense.id,
+        documentId,
+        mimeType: file.mimeType
+      });
+      const requestedSource = cleanText(req.body?.ocrSource, 40).toLowerCase();
+      const ocrSource = ['gemini', 'sample-demo'].includes(requestedSource)
+        ? requestedSource
+        : null;
+      const ocrModel = ocrSource === 'gemini'
+        ? cleanText(process.env.GEMINI_OCR_MODEL || process.env.GEMINI_MODEL, 100) || null
+        : null;
+
+      try {
+        await storage.put({
+          key: objectKey,
+          body: file.buffer,
+          contentType: file.mimeType,
+          metadata: {
+            expenseid: expense.id,
+            documentid: documentId,
+            sha256: file.sha256
+          }
+        });
+      } catch (error) {
+        console.error('Private document upload failed:', error instanceof Error ? error.message : error);
+        return res.status(503).json({
+          error: 'Private bill storage is temporarily unavailable. The expense was not changed.'
+        });
+      }
+
+      let document;
+      try {
+        document = await prisma.$transaction(async (tx) => {
+          // Lock the parent expense so simultaneous replacements cannot leave two current documents.
+          await tx.$queryRaw`SELECT "id" FROM "Expense" WHERE "id" = ${expense.id} FOR UPDATE`;
+          await tx.expenseDocument.updateMany({
+            where: { expenseId: expense.id, isCurrent: true },
+            data: { isCurrent: false, replacedAt: new Date() }
+          });
+          return tx.expenseDocument.create({
+            data: {
+              id: documentId,
+              expenseId: expense.id,
+              objectKey,
+              originalName: file.originalName,
+              mimeType: file.mimeType,
+              sizeBytes: file.sizeBytes,
+              sha256: file.sha256,
+              ocrSource,
+              ocrModel,
+              uploadedById: req.user.id
+            },
+            include: { uploadedBy: { select: { id: true, name: true } } }
+          });
+        }, { isolationLevel: 'Serializable' });
+      } catch (error) {
+        try {
+          await storage.remove(objectKey);
+        } catch (cleanupError) {
+          console.error('Private document cleanup failed:', cleanupError instanceof Error ? cleanupError.message : cleanupError);
+        }
+        if (error?.code === 'P2034') {
+          return res.status(409).json({
+            error: 'This expense document changed at the same time. Reload the expense and try again.'
+          });
+        }
+        throw error;
+      }
+
+      await logAction(req.user.id, 'UPLOAD_EXPENSE_DOCUMENT', 'ExpenseDocument', document.id, {
+        expenseId: expense.id,
+        sizeBytes: file.sizeBytes,
+        sha256: file.sha256,
+        ocrSource
+      });
+      return res.status(201).json({ document: serializeDocument(document, expense.id) });
+    })
+  );
+
+  app.get(
+    '/api/expenses/:id/document',
+    ...auth,
+    safeAsync(async (req, res) => {
+      if (!storage?.configured) {
+        return res.status(503).json({ error: 'Private bill storage is not configured for this environment.' });
+      }
+      const expense = await prisma.expense.findUnique({
+        where: { id: req.params.id },
+        include: {
+          grant: { select: { piId: true } },
+          documents: {
+            where: { isCurrent: true, deletedAt: null },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
+        }
+      });
+      if (!expense) return res.status(404).json({ error: 'Expense not found.' });
+      if (!expenseReadableBy(expense, req.user)) {
+        return res.status(403).json({ error: 'You do not have access to this expense.' });
+      }
+      const document = expense.documents[0];
+      if (!document) return res.status(404).json({ error: 'No current bill document is attached to this expense.' });
+
+      let object;
+      try {
+        object = await storage.get(document.objectKey);
+      } catch (error) {
+        const status = error?.code === 'NoSuchKey' ? 404 : 503;
+        return res.status(status).json({
+          error: status === 404
+            ? 'The attached bill document is no longer available.'
+            : 'Private bill storage is temporarily unavailable.'
+        });
+      }
+
+      const filename = safeDownloadName(document.originalName).replace(/"/g, '');
+      res
+        .status(200)
+        .set('Content-Type', document.mimeType)
+        .set('Content-Disposition', `attachment; filename="${filename}"`)
+        .set('Cache-Control', 'private, no-store');
+      if (object.contentLength) res.set('Content-Length', String(object.contentLength));
+
+      try {
+        for await (const chunk of object.body) res.write(chunk);
+        res.end();
+      } catch (error) {
+        if (!res.headersSent) throw error;
+        res.destroy(error instanceof Error ? error : undefined);
+      }
+
+      await logAction(req.user.id, 'DOWNLOAD_EXPENSE_DOCUMENT', 'ExpenseDocument', document.id, {
+        expenseId: expense.id
+      });
+    })
+  );
+
   app.post(
     '/api/ocr/extract',
     ...auth,
     requireRole(ROLE.PI, ROLE.ADMIN),
-    (req, res, next) => {
-      upload.single('file')(req, res, (error) => {
-        if (error) return res.status(400).json({ error: error.message || 'The upload is invalid.' });
-        next();
-      });
-    },
+    runSingleBillUpload,
     safeAsync(async (req, res) => {
       if (!req.file?.buffer) {
         return res.status(400).json({ error: 'Choose a PDF or image bill to extract.' });

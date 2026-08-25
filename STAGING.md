@@ -129,7 +129,11 @@ The production variable must continue to point to the production Render backend.
 
 A Vercel preview URL can change after each deployment. That is normal. If a stable public demo URL is needed later, create a second Vercel project connected only to the `staging` branch; do not repoint the production Vercel project.
 
-## 5. Staging smoke checklist
+## 5. Optional private staging bill storage
+
+After Phase 7 is merged, configure the staging Render service with a separate private S3-compatible bucket/key, then test one disposable demo bill attachment and role-scoped download. Backblaze B2 is the no-card default. Follow [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md); do not use production bucket credentials in staging.
+
+## 6. Staging smoke checklist
 
 - `/api/ready` returns HTTP 200 with `environment: "staging"`.
 - The staging landing page and login load.
@@ -139,7 +143,7 @@ A Vercel preview URL can change after each deployment. That is normal. If a stab
 - Production `main` remains pointed to the production Render URL.
 - Staging AI is visibly built-in guidance unless an explicit staging provider key is configured.
 
-## 6. Teardown and hygiene
+## 7. Teardown and hygiene
 
 When staging is not needed, suspend/delete the staging Render service and delete the staging Neon project/database. Keep production untouched.
 

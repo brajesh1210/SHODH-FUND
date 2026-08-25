@@ -114,6 +114,10 @@ npm test
 
 Create the disposable database before running those commands. In PowerShell, use `$env:NAME="value"` instead of `export NAME="value"`. CI performs the same migration, double-seed, and runtime test sequence with PostgreSQL 17.
 
+## Private bill storage
+
+Phase 7 supports private, authenticated expense-bill storage through a S3-compatible backend adapter. Backblaze B2 is the no-card default; Cloudflare R2 is optional. Configure separate staging and production buckets only after reviewing [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md). Storage credentials stay on the backend; Vercel and browser code never receive them.
+
 ## Ask AI and authenticated records
 
 Ask AI uses a server-only Gemini provider when `AI_PROVIDER_ORDER` and `GEMINI_API_KEY` are configured. Responses identify themselves as live AI or built-in guidance; if both modes are unavailable, the API returns an explicit `503 AI_PROVIDER_UNAVAILABLE` response. Admin settings separates configuration state from a cached, rate-limited connectivity probe. It never returns key values.

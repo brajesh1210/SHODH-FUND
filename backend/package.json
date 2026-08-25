@@ -10,8 +10,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "check:syntax": "node --check src/server.js && node --check src/fixed-routes.js && node --check src/ocr.js && node --check src/runtime.js && node --check src/ai/config.js && node --check src/ai/errors.js && node --check src/ai/guidance.js && node --check src/ai/prompts.js && node --check src/ai/providers/gemini.js && node --check src/ai/retrieval.js && node --check src/ai/service.js && node --check scripts/seed-staging.cjs && node --check scripts/db-target.cjs && node --check scripts/db-preflight.cjs && node --check scripts/migrate-deploy.cjs && node --check tests/ai.unit.test.js && node --check tests/staging.unit.test.js && node --check tests/migration-preflight.unit.test.js && node --check tests/database.integration.test.js",
-    "test:unit": "node --test --test-concurrency=1 tests/ai.unit.test.js tests/staging.unit.test.js tests/migration-preflight.unit.test.js",
+    "check:syntax": "node --check src/server.js && node --check src/fixed-routes.js && node --check src/ocr.js && node --check src/runtime.js && node --check src/storage/object-storage.js && node --check src/storage/r2.js && node --check src/storage/documents.js && node --check src/ai/config.js && node --check src/ai/errors.js && node --check src/ai/guidance.js && node --check src/ai/prompts.js && node --check src/ai/providers/gemini.js && node --check src/ai/retrieval.js && node --check src/ai/service.js && node --check scripts/seed-staging.cjs && node --check scripts/db-target.cjs && node --check scripts/db-preflight.cjs && node --check scripts/migrate-deploy.cjs && node --check tests/ai.unit.test.js && node --check tests/staging.unit.test.js && node --check tests/migration-preflight.unit.test.js && node --check tests/storage.unit.test.js && node --check tests/database.integration.test.js",
+    "test:unit": "node --test --test-concurrency=1 tests/ai.unit.test.js tests/staging.unit.test.js tests/migration-preflight.unit.test.js tests/storage.unit.test.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
@@ -25,6 +25,7 @@
     "db:preflight:staging": "node scripts/db-preflight.cjs --expect=staging"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1117.0",
     "@prisma/client": "^5.20.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
