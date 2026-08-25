@@ -3,7 +3,7 @@
 
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { createMemoryStorage, readR2Config } = require('../src/storage/r2');
+const { createMemoryStorage, readB2Config, readR2Config } = require('../src/storage/object-storage');
 const {
   MAX_DOCUMENT_BYTES,
   detectBillMime,
@@ -65,3 +65,18 @@ test('in-memory object storage preserves bytes only for isolated tests', async (
   await storage.remove('x.pdf');
   await assert.rejects(() => storage.get('x.pdf'), (error) => error?.code === 'NoSuchKey');
 });
+
+test('Backblaze B2 uses its S3 endpoint, key ID, application key, bucket and region', () => {
+  const b2 = readB2Config({
+    B2_ENDPOINT: 'https://s3.us-west-004.backblazeb2.com',
+    B2_KEY_ID: 'b2-key-id',
+    B2_APPLICATION_KEY: 'b2-application-secret',
+    B2_BUCKET: 'shodhfund-staging-bills',
+    B2_REGION: 'us-west-004'
+  });
+  assert.equal(b2.configured, true);
+  assert.equal(b2.provider, 'backblaze-b2');
+  assert.equal(b2.forcePathStyle, true);
+  assert.ok(!JSON.stringify({ endpoint: b2.endpoint, bucket: b2.bucket }).includes('application-secret'));
+});
+

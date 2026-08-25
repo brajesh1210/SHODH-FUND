@@ -109,7 +109,7 @@ Follow [DATABASE-OPERATIONS.md](DATABASE-OPERATIONS.md) for target preflight, st
 
 ## 6. Private bill storage
 
-Use separate private Cloudflare R2 buckets and bucket-scoped R2 keys for staging and production. Follow [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md) for bucket configuration, the Phase 7 migration order, storage failure behavior, and authorized document download flow. Do not set R2 credentials in Vercel or frontend environment files.
+Use separate private S3-compatible buckets and bucket-scoped keys for staging and production. Backblaze B2 is the no-card default; Cloudflare R2 is optional. Follow [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md) for bucket configuration, the Phase 7 migration order, storage failure behavior, and authorized document download flow. Do not set storage credentials in Vercel or frontend environment files.
 
 ## 7. Production notes
 

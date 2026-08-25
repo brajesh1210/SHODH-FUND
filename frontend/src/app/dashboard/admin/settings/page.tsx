@@ -150,8 +150,8 @@ export default function SettingsPage() {
       key: "r2",
       label: "Private bill storage",
       value: !!h?.r2,
-      hint: "Whether the backend has a private R2/S3 client configuration; use an authorized bill upload to prove object operations.",
-      meta: "Private R2 / S3 client",
+      hint: "Whether the backend has a private S3-compatible storage client configuration; use an authorized bill upload to prove object operations.",
+      meta: "Private object storage client",
       icon: "◇",
     },
   ];

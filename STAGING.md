@@ -131,7 +131,7 @@ A Vercel preview URL can change after each deployment. That is normal. If a stab
 
 ## 5. Optional private staging bill storage
 
-After Phase 7 is merged, configure the staging Render service with a separate private R2 bucket/key, then test one disposable demo bill attachment and role-scoped download. Follow [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md); do not use production bucket credentials in staging.
+After Phase 7 is merged, configure the staging Render service with a separate private S3-compatible bucket/key, then test one disposable demo bill attachment and role-scoped download. Backblaze B2 is the no-card default. Follow [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md); do not use production bucket credentials in staging.
 
 ## 6. Staging smoke checklist
 

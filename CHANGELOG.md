@@ -93,8 +93,8 @@ This tree contains the cumulative implementation based on the Phase 3 `main` com
 ## Phase 7 — private bill storage and OCR provenance
 
 - Added the `ExpenseDocument` database model and checked-in migration for private document metadata, digest, MIME, size, uploader, OCR provenance, current/replacement state, and audit history.
-- Added a backend-only S3-compatible Cloudflare R2 adapter plus an isolated in-memory test adapter.
+- Added a backend-only S3-compatible object-storage adapter supporting no-card Backblaze B2 and optional Cloudflare R2, plus an isolated in-memory test adapter.
 - Added magic-byte validation for PDF/JPEG/PNG/WebP bill files, 8 MB upload limits, randomized private object keys, server-side authorized downloads, replacement handling, and object cleanup after failed metadata writes.
 - Added private document indicators/download links in PI expense records and Finance verification.
 - Added document upload/download, authorization, file-validation, storage-configuration, and byte-preservation test coverage.
-- Added R2 bucket/key and deployment guidance in `DOCUMENT-STORAGE.md`.
+- Added no-card Backblaze B2 bucket/key and deployment guidance in `DOCUMENT-STORAGE.md`; Cloudflare R2 remains optional.
