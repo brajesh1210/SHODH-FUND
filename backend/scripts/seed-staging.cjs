@@ -61,8 +61,12 @@ function run() {
   const target = validateStagingSeedEnvironment();
   console.log(`Approved staging demo target: ${target.databaseName}`);
 
-  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-  const result = spawnSync(npx, ['prisma', 'db', 'seed'], {
+  // Invoke Prisma's local JavaScript CLI through the current Node binary.
+  // This avoids Windows spawnSync failures from invoking the npx.cmd wrapper.
+  const prismaCli = require.resolve('prisma/build/index.js', {
+    paths: [path.resolve(__dirname, '..')]
+  });
+  const result = spawnSync(process.execPath, [prismaCli, 'db', 'seed'], {
     cwd: path.resolve(__dirname, '..'),
     stdio: 'inherit',
     env: {
