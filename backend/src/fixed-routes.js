@@ -355,9 +355,11 @@ function safeAsync(handler) {
     try {
       await handler(req, res, next);
     } catch (error) {
-      console.error(`${req.method} ${req.originalUrl}:`, error);
+      const status = Number(error?.status);
+      if (!(status >= 400 && status < 500)) {
+        console.error(`${req.method} ${req.originalUrl}:`, error);
+      }
       if (!res.headersSent) {
-        const status = Number(error?.status);
         res.status(status >= 400 && status < 600 ? status : 500).json({
           error: status >= 400 && status < 500
             ? error.message
@@ -1634,9 +1636,10 @@ module.exports = function addFixedRoutes({
       let ucResult;
       try {
         ucResult = await prisma.$transaction(async (tx) => {
-          const existing = await tx.utilizationCertificate.findFirst({
-            where: { grantId, financialYear },
-            orderBy: { createdAt: 'desc' }
+          const existing = await tx.utilizationCertificate.findUnique({
+            where: {
+              grantId_financialYear: { grantId, financialYear }
+            }
           });
           if (existing && existing.status !== 'DRAFT') {
             const error = new Error('A UC for this grant and financial year has already entered review and cannot be overwritten.');
@@ -1664,7 +1667,7 @@ module.exports = function addFixedRoutes({
           return { record, replacedDraft: Boolean(existing) };
         }, { isolationLevel: 'Serializable' });
       } catch (error) {
-        if (error?.code === 'P2034') {
+        if (error?.code === 'P2034' || error?.code === 'P2002') {
           const conflict = new Error('A UC for this grant and financial year changed at the same time. Reload the drafts and try again.');
           conflict.status = 409;
           throw conflict;
@@ -2024,6 +2027,14 @@ module.exports = function addFixedRoutes({
       take: 50
     });
     res.json(notifications);
+  }));
+
+  app.put('/api/notifications/read-all', ...auth, safeAsync(async (req, res) => {
+    const result = await prisma.notification.updateMany({
+      where: { userId: req.user.id, read: false },
+      data: { read: true }
+    });
+    res.json({ updated: result.count });
   }));
 
   app.put('/api/notifications/:id/read', ...auth, safeAsync(async (req, res) => {

@@ -4,23 +4,35 @@
 
 - Node.js 22.23.2 (pinned in `.nvmrc` and `.node-version`)
 - npm 10.9.8 (bundled with the pinned Node release)
-- PostgreSQL
+- PostgreSQL 17
 
 The application does not fall back to a JSON database. A reachable PostgreSQL database is required for backend startup and runtime workflows.
 
-## 1. Backend
+## 1. PostgreSQL and backend
+
+For local development, either supply your own PostgreSQL database or start the optional PostgreSQL 17 service from the repository root:
+
+```bash
+docker compose up -d postgres
+```
+
+The Compose service listens only on `127.0.0.1:5432`, and its credentials match `backend/.env.example`.
+
+Install and configure the backend:
 
 ```bash
 cd backend
 npm ci
 cp .env.example .env
+# PowerShell alternative: Copy-Item .env.example .env
 ```
 
-Edit `backend/.env`:
+When not using the provided Compose database, edit `backend/.env`:
 
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?schema=public"
 JWT_SECRET="replace-with-a-random-secret-at-least-32-characters-long"
+NODE_ENV="development"
 PORT=4000
 ```
 
@@ -37,12 +49,15 @@ Prepare and start the backend:
 
 ```bash
 npm run db:generate
-npm run db:push
+npm run db:migrate:deploy
+npm run db:migrate:status
 npm run db:seed
 npm run dev
 ```
 
-For managed production databases, use your reviewed migration/deployment process instead of treating `db:push` as a production migration strategy.
+The checked-in Prisma migrations are the schema baseline for development, CI, and deployment; do not substitute `prisma db push`. Create intentional development migrations with `npm run db:migrate:dev -- --name <migration-name>` against a disposable development database, then review and commit the SQL.
+
+The demo seed is non-destructive toward unrelated rows and reconciles reserved fixed IDs. It refuses production/staging, PostgreSQL system databases, and non-local targets unless an explicit remote-demo override is supplied. Never enable that override for shared or valuable data.
 
 ## 2. Frontend
 
@@ -50,8 +65,9 @@ In another terminal:
 
 ```bash
 cd frontend
-npm install
+npm ci
 cp .env.example .env.local
+# PowerShell alternative: Copy-Item .env.example .env.local
 npm run dev
 ```
 
@@ -68,6 +84,8 @@ Open `http://localhost:3000`.
 After `npm run db:seed`, use password `demo1234` with one of:
 
 - `arjun.sharma@university.edu` — PI
+- `priya.verma@university.edu` — PI
+- `kumar.iyer@university.edu` — PI
 - `rohit.mehta@university.edu` — Finance
 - `meera.iyer@university.edu` — Admin
 - `sk.verma@university.edu` — Auditor
@@ -76,6 +94,8 @@ Use the matching account for each role. Role access comes from the authenticated
 
 ## 4. Production notes
 
+- Do not run the demo seed in production or staging.
+- Apply reviewed, checked-in migrations with `npm run db:migrate:deploy`.
 - Use HTTPS so the secure HttpOnly session cookie is transmitted safely.
 - Set a unique `JWT_SECRET` of at least 32 characters. Backend startup fails in production when the secret is absent or too short.
 - Restrict `CORS_ORIGIN` to the real frontend origin if the backend is exposed directly.
@@ -88,13 +108,16 @@ Use the matching account for each role. Role access comes from the authenticated
 ```bash
 # Frontend
 cd frontend
+npm run lint
+npm run typecheck
 npm run build
 
-# Backend syntax and Prisma schema
+# Backend syntax, schema, and migration status
 cd ../backend
 npm run check:syntax
 npm run db:generate
 npm run db:validate
+npm run db:migrate:status
 ```
 
-Then start both applications and verify login, role restrictions, grant ownership, expense submission/correction/decisions, UC transitions/PDFs, CSV exports, OCR, downloads, and safe error responses against a disposable PostgreSQL database.
+The database integration suite deliberately mutates its target. Follow the guarded disposable-database procedure in `README.md` before running `npm test`. Then verify the browser workflows against development or test data as appropriate.
