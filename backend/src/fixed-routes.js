@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const multer = require('multer');
 const PDFDocument = require('pdfkit');
+const { createAIService } = require('./ai/service');
 const { extractBill } = require('./ocr');
 
 // Used when an account is absent or has an unsupported legacy password value so
@@ -382,6 +383,7 @@ module.exports = function addFixedRoutes({
   logAction
 }) {
   const auth = [requireAuth];
+  const aiService = createAIService();
 
   // Configuration details are restricted to administrators.
   app.get(
@@ -2224,191 +2226,84 @@ module.exports = function addFixedRoutes({
     res.json(events);
   }));
 
-  async function geminiAssistantReply(prompt) {
-    const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-    if (!key) return null;
-
-    for (const model of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
-      try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.2, maxOutputTokens: 600 }
-            }),
-            signal: AbortSignal.timeout(12000)
-          }
-        );
-        if (!response.ok) continue;
-        const data = await response.json();
-        const reply = data?.candidates?.[0]?.content?.parts
-          ?.map((part) => part.text || '')
-          .join('\n')
-          .trim();
-        if (reply) return reply;
-      } catch {
-        // Built-in guidance below keeps the assistant usable without pretending AI succeeded.
-      }
-    }
-    return null;
-  }
-
-  function builtInAssistantReply(message, context) {
-    const q = message.toLowerCase();
-    const recordSummary = context
-      ? ` Your accessible records currently contain ${context.grants} grant(s), ${context.expenses} expense(s), and ${context.pendingExpenses} submitted expense(s) awaiting a decision.`
-      : ' Sign in to ask about records in your assigned workspace.';
-
-    if (/utili[sz]ation certificate|\buc\b/.test(q)) {
-      return `In ShodhFund, a PI opens the UC draft generator, selects an owned grant and an Indian financial year, and generates a working calculation. The server derives the 1 April to 31 March period, counts approved expense records dated inside that year as period expenditure, and calculates the displayed sanction balance from cumulative approved expenditure through period end against the current recorded sanctioned amount. Finance can move the saved record forward through review and internal approval. The downloadable PDF is a working utilization summary, not a certified statutory or agency form; reconcile source records and use the required institutional format before authorized signature or submission.${recordSummary}`;
-    }
-    if (/expense|invoice|bill|vendor/.test(q)) {
-      return `Expense workflow: a PI records the bill against a budget head owned by the selected grant; Finance reviews the submitted record and records a decision; audit users can inspect compliance fields and anomalies. Bill extraction is an aid only—review vendor, amount, invoice, date, GST, and budget head before saving.${recordSummary}`;
-    }
-    if (/gfr|compliance|audit/.test(q)) {
-      return `Use ShodhFund's recorded compliance status, issue flags, approval history, and audit trail as review aids. They do not replace an institution's formal GFR, finance, procurement, or audit assessment. Check the source invoice, authorization, procurement route, applicable thresholds, and supporting evidence before deciding.${recordSummary}`;
-    }
-    if (/grant|fund|budget/.test(q)) {
-      return `A grant record connects sanctioned funding, budget heads, expenses, milestones, UCs, objections, and audit history. Access is role- and ownership-scoped, so the workspace should show only records your authenticated account may view.${recordSummary}`;
-    }
-    return `I can help explain ShodhFund workflows for grants, expenses, budget heads, utilization certificates, and recorded compliance checks.${recordSummary}`;
+  function aiRequestId(req, res) {
+    const supplied = cleanText(req.headers['x-request-id'], 128);
+    const requestId = /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied)
+      ? supplied
+      : crypto.randomUUID();
+    res.set('X-Request-Id', requestId);
+    return requestId;
   }
 
   app.post('/api/chat', optionalAuth, safeAsync(async (req, res) => {
     const message = cleanText(req.body?.message, 2000);
     if (!message) return res.status(400).json({ error: 'A message is required.' });
 
-    let context = null;
-    if (req.user) {
-      const grantWhere = { ...piScope(req.user) };
-      const expenseWhere = req.user.role === ROLE.PI ? { grant: { piId: req.user.id } } : {};
-      const [grants, expenses, pendingExpenses, sums] = await Promise.all([
-        prisma.grant.count({ where: grantWhere }),
-        prisma.expense.count({ where: expenseWhere }),
-        prisma.expense.count({ where: { ...expenseWhere, status: 'SUBMITTED' } }),
-        prisma.grant.aggregate({ where: grantWhere, _sum: { sanctionedAmount: true, spentAmount: true } })
-      ]);
-      context = {
-        grants,
-        expenses,
-        pendingExpenses,
-        sanctioned: number(sums._sum.sanctionedAmount),
-        spent: number(sums._sum.spentAmount)
-      };
-    }
-
-    const safeHistory = Array.isArray(req.body?.history)
-      ? req.body.history.slice(-6).map((item) => ({
-          role: item?.role === 'assistant' ? 'assistant' : 'user',
-          content: cleanText(item?.content, 1000)
-        }))
-      : [];
-    const prompt = [
-      'You are the concise ShodhFund workflow assistant.',
-      'Never invent records, legal compliance, approvals, or platform health.',
-      'State that financial, legal, procurement, and compliance decisions need institutional review.',
-      `Page: ${cleanText(req.body?.page, 200) || 'ShodhFund application'}`,
-      context ? `Authenticated record summary: ${JSON.stringify(context)}` : 'No authenticated record context is available.',
-      `Recent messages: ${JSON.stringify(safeHistory)}`,
-      `Question: ${message}`
-    ].join('\n');
-
-    const providerReply = await geminiAssistantReply(prompt);
-    res.json({
-      reply: providerReply || builtInAssistantReply(message, context),
-      source: providerReply ? 'gemini' : 'built-in-guidance',
-      recordContext: Boolean(context)
+    const outcome = await aiService.answer({
+      message,
+      page: cleanText(req.body?.page, 200),
+      history: req.body?.history,
+      user: req.user || null,
+      prisma,
+      requestId: aiRequestId(req, res)
     });
+    res
+      .status(outcome.status)
+      .set('Cache-Control', 'private, no-store')
+      .json({
+        ...outcome.body,
+        error: outcome.status >= 400 ? outcome.body.message : undefined,
+        reply: outcome.status < 400 ? outcome.body.answer : undefined,
+        recordContext: Boolean(outcome.body.records)
+      });
   }));
 
   app.post('/api/ask', ...auth, safeAsync(async (req, res) => {
-    const question = cleanText(req.body?.q ?? req.body?.question, 500);
+    const question = cleanText(req.body?.q ?? req.body?.question, 2000);
     if (!question) return res.status(400).json({ error: 'A question is required.' });
-    const q = question.toLowerCase();
-    const grantWhere = { ...piScope(req.user) };
-    const grants = await prisma.grant.findMany({
-      where: grantWhere,
-      include: {
-        pi: { select: { name: true, department: true } },
-        expenses: true,
-        ucs: true
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    const grantIds = grants.map((grant) => grant.id);
-    const inScope = grantIds.length ? { grantId: { in: grantIds } } : { grantId: { in: [] } };
 
-    if (q.includes('pending') && q.includes('expense')) {
-      const pending = await prisma.expense.groupBy({
-        by: ['grantId'],
-        where: { ...inScope, status: 'SUBMITTED' },
-        _count: { _all: true },
-        _sum: { amount: true }
-      });
-      const rows = pending.map((group) => {
-        const grant = grants.find((item) => item.id === group.grantId);
-        return {
-          id: group.grantId,
-          label: grant?.title || group.grantId,
-          value: `${group._count._all} pending · ₹${number(group._sum.amount).toLocaleString('en-IN')}`
-        };
-      });
-      const count = pending.reduce((sum, group) => sum + group._count._all, 0);
-      return res.json({ answer: `${count} submitted expense${count === 1 ? '' : 's'} await finance review in your accessible grants.`, rows });
-    }
-
-    if (q.includes('anomal')) {
-      const anomalies = await prisma.anomaly.findMany({
-        where: { resolved: false, expense: { grantId: { in: grantIds } } },
-        include: { expense: { select: { grantId: true, amount: true } } }
-      });
-      const grouped = new Map();
-      for (const anomaly of anomalies) {
-        const current = grouped.get(anomaly.expense.grantId) || { count: 0, high: 0 };
-        current.count += 1;
-        if (anomaly.severity === 'HIGH') current.high += 1;
-        grouped.set(anomaly.expense.grantId, current);
-      }
-      const rows = [...grouped.entries()].map(([grantId, value]) => ({
-        id: grantId,
-        label: grants.find((grant) => grant.id === grantId)?.title || grantId,
-        value: `${value.count} open${value.high ? ` · ${value.high} high` : ''}`
-      }));
-      return res.json({ answer: `${anomalies.length} unresolved anomal${anomalies.length === 1 ? 'y' : 'ies'} are recorded in your accessible grants.`, rows });
-    }
-
-    if (q.includes('uc') && (q.includes('due') || q.includes('deadline'))) {
-      const due = grants.filter((grant) => grant.ucDueDate);
-      return res.json({
-        answer: `${due.length} accessible grant${due.length === 1 ? '' : 's'} have a recorded UC due date.`,
-        rows: due.map((grant) => ({
-          id: grant.id,
-          label: grant.title,
-          value: dateOnly(grant.ucDueDate)
+    const result = await aiService.askRecords({ prisma, user: req.user, question });
+    res
+      .set('Cache-Control', 'private, no-store')
+      .json({
+        ...result,
+        rows: result.links.map((link) => ({
+          id: link.id,
+          label: link.label,
+          value: link.type === 'grant' ? 'Open grant' : 'Open records',
+          href: link.href
         }))
       });
-    }
-
-    const agencyTokens = q.split(/[^a-z0-9]+/).filter((token) => token.length >= 2);
-    const matching = grants.filter((grant) => {
-      const haystack = `${grant.agency} ${grant.title} ${grant.grantCode}`.toLowerCase();
-      return agencyTokens.some((token) => haystack.includes(token));
-    });
-    const selected = matching.length ? matching : grants;
-    const spent = selected.reduce((sum, grant) => sum + number(grant.spentAmount), 0);
-    const sanctioned = selected.reduce((sum, grant) => sum + number(grant.sanctionedAmount), 0);
-    res.json({
-      answer: `${selected.length} accessible grant${selected.length === 1 ? '' : 's'} match. Recorded spending is ₹${spent.toLocaleString('en-IN')} from ₹${sanctioned.toLocaleString('en-IN')} sanctioned.`,
-      rows: selected.slice(0, 20).map((grant) => ({
-        id: grant.id,
-        label: grant.title,
-        value: `₹${number(grant.spentAmount).toLocaleString('en-IN')} spent`
-      }))
-    });
   }));
+
+  app.get(
+    '/api/admin/ai/status',
+    ...auth,
+    requireRole(ROLE.ADMIN),
+    safeAsync(async (_req, res) => {
+      res
+        .set('Cache-Control', 'private, no-store')
+        .json(aiService.status());
+    })
+  );
+
+  app.post(
+    '/api/admin/ai/probe',
+    ...auth,
+    requireRole(ROLE.ADMIN),
+    safeAsync(async (req, res) => {
+      const result = await aiService.probe(aiRequestId(req, res));
+      await logAction(req.user.id, 'AI_PROVIDER_PROBE', 'AIProvider', result.provider || 'configured-order', {
+        ok: result.ok,
+        code: result.code || 'SUCCESS',
+        cached: Boolean(result.cached)
+      });
+      res
+        .status(result.code === 'PROBE_RATE_LIMITED' ? 429 : 200)
+        .set('Cache-Control', 'private, no-store')
+        .json(result);
+    })
+  );
 
   app.get('/api/export/expenses.csv', ...auth, safeAsync(async (req, res) => {
     const expenses = await prisma.expense.findMany({

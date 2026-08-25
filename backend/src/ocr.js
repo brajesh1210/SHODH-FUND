@@ -119,8 +119,11 @@ function normalize(parsed) {
 async function discoverModels(key) {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
-      { signal: AbortSignal.timeout(8000) }
+      'https://generativelanguage.googleapis.com/v1beta/models',
+      {
+        headers: { 'x-goog-api-key': key },
+        signal: AbortSignal.timeout(8000)
+      }
     );
     if (!response.ok) return [];
     const data = await response.json();
@@ -142,7 +145,6 @@ async function geminiExtract({ key, mime, buffer }) {
   const preferred = [
     configured,
     'gemini-2.5-flash',
-    'gemini-2.0-flash',
     ...discovered.filter((name) => /flash/i.test(name)),
     ...discovered
   ].filter(Boolean);
@@ -165,10 +167,13 @@ async function geminiExtract({ key, mime, buffer }) {
   for (const model of models) {
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': key
+          },
           body: requestBody,
           signal: AbortSignal.timeout(25000)
         }

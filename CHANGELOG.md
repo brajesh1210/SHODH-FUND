@@ -2,7 +2,7 @@
 
 ## Unreleased — cumulative security, data-integrity, and UX remediation
 
-This tree contains the cumulative implementation based on public `main` commit `8d73dc46a4e987f4d93375ec675baa3f01385037`.
+This tree contains the cumulative implementation based on the Phase 3 `main` commit `43521eef5e8af554468085939f0848069d560215`.
 
 ### Authentication and authorization
 
@@ -35,8 +35,11 @@ This tree contains the cumulative implementation based on public `main` commit `
 
 ### Ask Records, assistant, OCR, and exports
 
-- Repaired Ask Records to query authenticated, role-scoped records using the `{ q }` request contract.
-- Made the general assistant endpoint optional-provider and explicit about unavailability instead of fabricating live-record answers.
+- Added a server-only Gemini provider abstraction with validated configuration, header authentication, bounded retries and timeout, circuit breaking, normalized responses, token metadata, and sanitized request logging.
+- Added truthful `live-ai`, `built-in-guidance`, `record-data`, and explicit unavailable response modes with visible UI provenance.
+- Repaired Ask Records to query rehydrated-user-scoped PostgreSQL data deterministically, deny PI cross-ownership access, cap and interleave combined results, and return de-duplicated authoritative links.
+- Kept external record context disabled by default; when approved and enabled, context is minimal, capped, role-scoped, identifier-redacted, and delimited as untrusted data.
+- Added Admin-only passive provider state plus an explicit cached and rate-limited connectivity probe that never returns key values.
 - Added Gemini bill extraction with strict output normalization, canonical aliases, proof verification, and honest provider failures.
 - Added exact-SHA-256 bundled sample fallback with visible provenance; filenames are not used to infer bill values.
 - Corrected multipart and binary forwarding through the frontend proxy.
@@ -46,7 +49,7 @@ This tree contains the cumulative implementation based on public `main` commit `
 
 - Preserved the approved landing hero, logo treatments, university marquee, feature presentation, full-screen compact Ask AI experience, navigation, and dashboard behavior.
 - Wired landing feature anchors and Privacy/Security routes.
-- Removed obsolete SIH references and unqualified AI, compliance, monitoring, NIRF, uptime, and security claims.
+- Removed obsolete event references and unqualified AI, compliance, monitoring, NIRF, uptime, and security claims.
 - Replaced hardcoded dashboard/platform metrics with record-derived values, qualified illustrative values, explicit configuration status, or honest unavailable/error states.
 - Repaired notification “Mark all as read,” grant links, loading/empty/error states, responsive forms, mobile actions, downloads, and role-aware dashboards.
 
@@ -71,4 +74,4 @@ This tree contains the cumulative implementation based on public `main` commit `
 - Backend JavaScript syntax checks pass.
 - Prisma Client generation and schema validation pass with Prisma 5.22.0.
 - The final frontend production build completes without warnings.
-- Database-backed end-to-end role and transaction regressions remain dependent on a reachable PostgreSQL test instance and are not represented as completed here.
+- The guarded PostgreSQL suite covers deterministic seeding, role and ownership isolation, Ask AI provenance and records, financial invariants, and concurrency-sensitive workflows; it requires a migrated, seeded disposable PostgreSQL test database.

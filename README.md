@@ -83,7 +83,7 @@ Accounts have one assigned role. To test another workspace, log out and sign in 
 
 ## Database integration tests
 
-The backend test suite starts the Express application on an ephemeral port and exercises it over HTTP against PostgreSQL. It covers deterministic seed invariants, database constraints, authentication and role scopes, PI ownership, concurrent expense submissions, duplicate detection, competing finance decisions, stale correction writes, UC uniqueness and workflow transitions, owner-scoped notification reads, and audit-record access.
+The backend test suite includes provider-unit coverage and starts the Express application on an ephemeral port for PostgreSQL-backed checks. It covers AI success/error/retry/circuit/probe paths, truthful provenance, deterministic record queries and PI cross-ownership denial, plus seed invariants, database constraints, authentication and role scopes, concurrent expense submissions, duplicate detection, competing finance decisions, stale correction writes, UC uniqueness and workflow transitions, owner-scoped notification reads, and audit-record access.
 
 The suite intentionally mutates its database. Use only a newly created disposable database whose name begins with `shodhfund_test`, `shodhfund_ci`, or `shodhfund_phase3_clean_`. It also requires both safety flags below and refuses any database name outside that policy.
 
@@ -104,6 +104,12 @@ npm test
 
 Create the disposable database before running those commands. In PowerShell, use `$env:NAME="value"` instead of `export NAME="value"`. CI performs the same migration, double-seed, and runtime test sequence with PostgreSQL 17.
 
+## Ask AI and authenticated records
+
+Ask AI uses a server-only Gemini provider when `AI_PROVIDER_ORDER` and `GEMINI_API_KEY` are configured. Responses identify themselves as live AI or built-in guidance; if both modes are unavailable, the API returns an explicit `503 AI_PROVIDER_UNAVAILABLE` response. Admin settings separates configuration state from a cached, rate-limited connectivity probe. It never returns key values.
+
+Authenticated Ask Records queries rehydrated-user-scoped PostgreSQL data deterministically and works with all external AI providers disabled. Structured record values and links remain authoritative and separate from optional model prose. `AI_RECORD_CONTEXT_ENABLED` defaults to `false`; do not enable external record context until institutional privacy/legal review is complete. When explicitly enabled, external context is capped, role-scoped, redacts common personal identifiers, and is delimited and treated as untrusted record data. See `INSTALL.md` and `backend/.env.example` for the bounded timeout, retry, model, fallback, probe-cache, and context settings.
+
 ## Optional OCR provider
 
 Set `GEMINI_API_KEY` or `GOOGLE_API_KEY` in `backend/.env` to enable Gemini bill extraction. Without a working provider, extraction fails honestly except for the exact bundled demonstration PDFs documented in `demo-bills/README.md`. The fallback matches file SHA-256 digests, not filenames, and is labeled as sample data.
@@ -112,7 +118,7 @@ OCR is an input aid only. Users must review all extracted fields before submitti
 
 ## Health and optional configuration
 
-The protected Admin health view checks database connectivity and reports whether JWT, OCR-provider, and optional R2/S3 environment variables are configured. Provider/storage configuration labels are not external connectivity, upload, uptime, or security tests.
+The protected Admin health view checks database connectivity and reports whether JWT, OCR-provider, and optional R2/S3 environment variables are configured. The separate Admin Ask AI panel reports sanitized provider configuration and last-attempt state; its explicit connectivity probe is cached and rate-limited because it may consume provider quota. Provider/storage configuration labels are not external connectivity, upload, uptime, or security tests.
 
 ## Validation commands
 

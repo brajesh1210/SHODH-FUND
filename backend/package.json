@@ -10,8 +10,9 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "check:syntax": "node --check src/server.js && node --check src/fixed-routes.js && node --check src/ocr.js && node --check tests/database.integration.test.js",
-    "test": "node --test --test-concurrency=1 tests/database.integration.test.js",
+    "check:syntax": "node --check src/server.js && node --check src/fixed-routes.js && node --check src/ocr.js && node --check src/ai/config.js && node --check src/ai/errors.js && node --check src/ai/guidance.js && node --check src/ai/prompts.js && node --check src/ai/providers/gemini.js && node --check src/ai/retrieval.js && node --check src/ai/service.js && node --check tests/ai.unit.test.js && node --check tests/database.integration.test.js",
+    "test:unit": "node --test --test-concurrency=1 tests/ai.unit.test.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:seed": "prisma db seed",

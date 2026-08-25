@@ -244,6 +244,91 @@
   overflow-wrap: anywhere;
 }
 
+.provenance {
+  display: inline-flex;
+  margin: 0 0 8px;
+  padding: 3px 7px;
+  border: 1px solid #cbd4c3;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #596451;
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.recordData {
+  margin-top: 11px;
+  padding: 10px 11px;
+  border: 1px solid #cbd5c4;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.recordData b {
+  display: block;
+  margin-bottom: 5px;
+  color: #4c5846;
+  font-size: 0.66rem;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.recordData p {
+  font-size: 0.8rem;
+}
+
+.recordLinks {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recordLinks a,
+.retryButton {
+  min-height: 30px;
+  padding: 6px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #bdc8b4;
+  border-radius: 8px;
+  background: #fff;
+  color: #3f4a39;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.recordLinks a:hover,
+.retryButton:hover:not(:disabled) {
+  border-color: #84937c;
+  background: #f6f9f3;
+}
+
+.errorMessage {
+  border-color: #e2b9b6 !important;
+  background: #fff4f3 !important;
+}
+
+.retryButton {
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.retryButton svg {
+  width: 13px;
+  height: 13px;
+}
+
+.retryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .loadingMessage p {
   color: #697066;
 }
@@ -323,12 +408,47 @@
   height: 18px;
 }
 
-.composerArea > p {
-  margin: 6px 0 0;
+.composerNote {
+  min-height: 30px;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   color: #868c83;
   font-size: 0.67rem;
   line-height: 1.3;
   text-align: center;
+}
+
+.composerNote button {
+  padding: 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d2d8cd;
+  border-radius: 7px;
+  background: #f7f9f5;
+  color: #4c5549;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.composerNote button:hover:not(:disabled) {
+  border-color: #9ca895;
+  background: #eef4e9;
+}
+
+.composerNote button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.composerNote button svg {
+  width: 12px;
+  height: 12px;
 }
 
 @media (max-width: 720px) {
@@ -415,14 +535,14 @@
     padding: 9px 10px max(8px, env(safe-area-inset-bottom));
   }
 
-  .composerArea > p {
+  .composerNote > span {
     display: none;
   }
 }
 
 @media (max-height: 560px) {
   .brand p,
-  .composerArea > p {
+  .composerNote > span {
     display: none;
   }
 
