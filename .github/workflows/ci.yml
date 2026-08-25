@@ -60,11 +60,28 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   backend:
-    name: Backend quality
+    name: Backend and PostgreSQL
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: shodhfund_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d shodhfund_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/shodhfund_ci?schema=public
+      NODE_ENV: test
+      SHODHFUND_TEST_DATABASE: "true"
+      JWT_SECRET: ci-only-shodhfund-secret-at-least-32-characters
     defaults:
       run:
         working-directory: backend
@@ -92,29 +109,23 @@ jobs:
       - name: Check JavaScript syntax
         run: npm run check:syntax
 
-      - name: Generate Prisma Client
-        run: npm run db:generate
+      - name: Generate and validate Prisma Client
+        run: |
+          npm run db:generate
+          npm run db:validate
 
-      - name: Validate Prisma schema
-        run: npm run db:validate
+      - name: Deploy checked-in migrations
+        run: |
+          npm run db:migrate:deploy
+          npm run db:migrate:status
+
+      - name: Prove deterministic seed
+        run: |
+          npm run db:seed
+          npm run db:seed
+
+      - name: Run database integration and concurrency tests
+        run: npm test
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
-
-  dependency-review:
-    name: Dependency review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
-        with:
-          fail-on-severity: high

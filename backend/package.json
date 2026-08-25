@@ -10,12 +10,14 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "check:syntax": "node --check src/server.js && node --check src/fixed-routes.js && node --check src/ocr.js",
+    "check:syntax": "node --check src/server.js && node --check src/fixed-routes.js && node --check src/ocr.js && node --check tests/database.integration.test.js",
+    "test": "node --test --test-concurrency=1 tests/database.integration.test.js",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:migrate": "prisma migrate dev"
+    "db:seed": "prisma db seed",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
@@ -32,6 +34,6 @@
     "tsx": "^4.16.0"
   },
   "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   }
 }

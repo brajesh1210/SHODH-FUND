@@ -200,13 +200,9 @@ export default function P() {
     setMarkingAll(true);
 
     try {
-      await Promise.all(
-        unread.map((notification) =>
-          api(`/api/notifications/${notification.id}/read`, {
-            method: "PUT",
-          })
-        )
-      );
+      await api("/api/notifications/read-all", {
+        method: "PUT",
+      });
 
       const updatedIds = new Set(unread.map((notification) => notification.id));
       setData((current) =>
