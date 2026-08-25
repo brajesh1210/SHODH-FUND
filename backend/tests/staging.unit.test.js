@@ -34,6 +34,13 @@ test('staging seed parser never returns secrets and recognizes only the database
   assert.throws(() => databaseTarget('not a URL'), /complete PostgreSQL URL/);
 });
 
+test('staging helper resolves Prisma locally instead of depending on a Windows npx wrapper', () => {
+  const prismaCli = require.resolve('prisma/build/index.js', {
+    paths: [require('node:path').resolve(__dirname, '..')]
+  });
+  assert.match(prismaCli.replace(/\\/g, '/'), /node_modules\/prisma\/build\/index\.js$/);
+});
+
 test('staging demo seed only accepts the explicit staging marker, exact DB name, direct Neon URL', () => {
   assert.deepEqual(
     validateStagingSeedEnvironment({
