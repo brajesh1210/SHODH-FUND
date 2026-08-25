@@ -18,6 +18,12 @@ if (!/^shodhfund_(ci|test|phase3_clean_)/.test(databaseName)) {
 
 process.env.JWT_SECRET ||= 'phase-3-integration-test-secret-at-least-32-characters';
 process.env.CORS_ORIGIN ||= '';
+// Database-backed AI route tests must remain deterministic and never call a live provider.
+process.env.AI_PROVIDER_ORDER = '';
+process.env.AI_BUILTIN_GUIDANCE_ENABLED = 'true';
+process.env.AI_RECORD_CONTEXT_ENABLED = 'false';
+delete process.env.GEMINI_API_KEY;
+delete process.env.GOOGLE_API_KEY;
 
 let apiBase;
 let appServer;
@@ -192,6 +198,88 @@ test('authentication, roles, and PI ownership are enforced by live database reco
     body: { title: 'Forbidden', agency: 'TEST', sanctionedAmount: 1000 }
   });
   assert.equal(auditorCreate.status, 403);
+});
+
+test('Ask AI provenance, record authorization, and diagnostics are truthful', async () => {
+  const publicChat = await request('/api/chat', {
+    method: 'POST',
+    body: { message: 'Explain the expense workflow.' }
+  });
+  assert.equal(publicChat.status, 200, JSON.stringify(publicChat.body));
+  assert.equal(publicChat.body.mode, 'built-in-guidance');
+  assert.equal(publicChat.body.provider, null);
+  assert.equal(publicChat.body.recordContext, false);
+
+  const unauthenticatedAsk = await request('/api/ask', {
+    method: 'POST',
+    body: { question: 'Show GR-DST-2401' }
+  });
+  assert.equal(unauthenticatedAsk.status, 401);
+
+  const ownGrant = await authenticated('pi', '/api/ask', {
+    method: 'POST',
+    body: { question: 'Show GR-DST-2401' }
+  });
+  assert.equal(ownGrant.status, 200, JSON.stringify(ownGrant.body));
+  assert.equal(ownGrant.body.mode, 'record-data');
+  assert.equal(ownGrant.body.source, 'Authorized ShodhFund records');
+  assert.match(ownGrant.body.answer, /GR-DST-2401/);
+  assert.match(ownGrant.body.answer, /₹84,50,000/);
+  assert.ok(ownGrant.body.links.some((link) => link.href === '/grants/GR-DST-2401'));
+
+  const crossOwnedGrant = await authenticated('pi', '/api/ask', {
+    method: 'POST',
+    body: { question: 'Show GR-UGC-2209' }
+  });
+  assert.equal(crossOwnedGrant.status, 200);
+  assert.match(crossOwnedGrant.body.answer, /not found or is not accessible/i);
+  assert.equal(crossOwnedGrant.body.links.length, 0);
+  assert.doesNotMatch(crossOwnedGrant.body.answer, /Computational genomics/);
+
+  const crossOwnedExpense = await authenticated('pi', '/api/ask', {
+    method: 'POST',
+    body: { question: 'Show EXP-1028' }
+  });
+  assert.equal(crossOwnedExpense.status, 200);
+  assert.match(crossOwnedExpense.body.answer, /not found or is not accessible/i);
+  assert.equal(crossOwnedExpense.body.links.length, 0);
+
+  const accessibleSearch = await authenticated('pi', '/api/ask', {
+    method: 'POST',
+    body: { question: 'Find Thermo records' }
+  });
+  assert.equal(accessibleSearch.status, 200, JSON.stringify(accessibleSearch.body));
+  assert.match(accessibleSearch.body.answer, /EXP-1042/);
+  assert.doesNotMatch(accessibleSearch.body.answer, /EXP-1028/);
+  assert.equal(
+    new Set(accessibleSearch.body.links.map((link) => link.href)).size,
+    accessibleSearch.body.links.length
+  );
+
+  const financeRecord = await authenticated('finance', '/api/ask', {
+    method: 'POST',
+    body: { question: 'Show EXP-1028' }
+  });
+  assert.equal(financeRecord.status, 200, JSON.stringify(financeRecord.body));
+  assert.match(financeRecord.body.answer, /₹1,86,000/);
+  assert.match(financeRecord.body.answer, /GR-UGC-2209/);
+
+  const nonAdminStatus = await authenticated('pi', '/api/admin/ai/status');
+  assert.equal(nonAdminStatus.status, 403);
+  const adminStatus = await authenticated('admin', '/api/admin/ai/status');
+  assert.equal(adminStatus.status, 200, JSON.stringify(adminStatus.body));
+  assert.deepEqual(adminStatus.body.providerOrder, []);
+  assert.equal(adminStatus.body.externalRecordContextEnabled, false);
+  assert.equal(adminStatus.body.providers.length, 1);
+  assert.equal(adminStatus.body.providers[0].provider, 'gemini');
+  assert.equal(adminStatus.body.providers[0].configured, false);
+  assert.equal(adminStatus.body.providers[0].enabled, false);
+  assert.ok(!JSON.stringify(adminStatus.body).includes('apiKey'));
+
+  const probe = await authenticated('admin', '/api/admin/ai/probe', { method: 'POST' });
+  assert.equal(probe.status, 200, JSON.stringify(probe.body));
+  assert.equal(probe.body.ok, false);
+  assert.equal(probe.body.code, 'NOT_CONFIGURED');
 });
 
 test('concurrent expense submissions preserve grant and budget-head totals', async () => {

@@ -36,14 +36,21 @@ NODE_ENV="development"
 PORT=4000
 ```
 
-Optional Gemini OCR:
+Optional server-side Ask AI and Gemini OCR:
 
 ```env
+AI_PROVIDER_ORDER="gemini"
 GEMINI_API_KEY=""
-# GEMINI_MODEL="gemini-2.0-flash"
+GEMINI_MODEL="gemini-2.5-flash-lite"
+AI_TIMEOUT_MS="15000"
+AI_MAX_RETRIES="2"
+AI_BUILTIN_GUIDANCE_ENABLED="true"
+AI_RECORD_CONTEXT_ENABLED="false"
+AI_PROBE_CACHE_SECONDS="300"
+GEMINI_OCR_MODEL="gemini-2.5-flash"
 ```
 
-`GOOGLE_API_KEY` can be used instead of `GEMINI_API_KEY`. Optional R2/S3 variables are reported as configuration only; that health label is not a storage connectivity or upload test.
+Keep `GEMINI_API_KEY` on the backend only. The application sends it with the official `x-goog-api-key` header; never place it in browser variables, URLs, logs, or committed files. `GOOGLE_API_KEY` remains a compatibility alias. Built-in guidance works without Gemini. Keep external record context disabled until institutional privacy/legal review is complete; authenticated Ask Records remains deterministic and provider-independent. If context is approved and enabled, the server sends only a capped, role-scoped summary, redacts common personal identifiers, and treats all record text as untrusted data. Optional R2/S3 variables are reported as configuration only, not as a storage connectivity or upload test.
 
 Prepare and start the backend:
 

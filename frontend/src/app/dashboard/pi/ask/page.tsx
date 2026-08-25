@@ -21,7 +21,9 @@ const suggestions = [
 
 type AskResult = {
   answer: string;
-  rows: { id: string; label: string; value: string }[];
+  mode: "record-data";
+  source: string;
+  rows: { id: string; label: string; value: string; href: string }[];
 };
 
 export default function AskPage() {
@@ -131,8 +133,10 @@ export default function AskPage() {
                     <Sparkles className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <div>
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-muted">Answer</span>
-                    <p className="mt-1 text-[15px] leading-7 text-[#26302A]">{result.answer}</p>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-muted">
+                      {result.source || "Authorized ShodhFund records"}
+                    </span>
+                    <p className="mt-1 whitespace-pre-wrap text-[15px] leading-7 text-[#26302A]">{result.answer}</p>
                   </div>
                 </div>
               </div>
@@ -142,7 +146,7 @@ export default function AskPage() {
                   result.rows.map((row) => (
                     <Link
                       key={row.id}
-                      href={`/grants/${row.id}`}
+                      href={row.href}
                       className="group flex items-center justify-between gap-5 border-b border-border px-5 py-4 last:border-0 transition hover:bg-[#F8FAF5] sm:px-6"
                     >
                       <div className="min-w-0">

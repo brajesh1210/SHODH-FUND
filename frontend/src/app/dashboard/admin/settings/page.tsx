@@ -27,8 +27,49 @@ type Health = {
   checkedAt?: string;
 };
 
+type AIProviderStatus = {
+  provider: string;
+  configured: boolean;
+  enabled: boolean;
+  model: string;
+  state: "not-configured" | "circuit-open" | "available-at-last-attempt" | "failed-at-last-attempt" | "not-probed";
+  lastAttempt: null | {
+    ok: boolean;
+    code: string;
+    latencyMs: number;
+    requestId: string | null;
+    at: string;
+  };
+  circuitOpenUntil: string | null;
+};
+
+type AIStatus = {
+  providerOrder: string[];
+  builtInGuidanceEnabled: boolean;
+  externalRecordContextEnabled: boolean;
+  providers: AIProviderStatus[];
+  checkedAt: string;
+  note: string;
+};
+
+type AIProbe = {
+  ok: boolean;
+  provider?: string | null;
+  model?: string | null;
+  code?: string;
+  message?: string;
+  latencyMs?: number;
+  requestId?: string | null;
+  cached: boolean;
+  checkedAt?: string;
+};
+
 export default function SettingsPage() {
   const [h, setH] = useState<Health | null>(null);
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
+  const [aiError, setAiError] = useState("");
+  const [probe, setProbe] = useState<AIProbe | null>(null);
+  const [probeBusy, setProbeBusy] = useState(false);
 
   useEffect(() => {
     api<HealthResponse>("/api/health")
@@ -53,7 +94,32 @@ export default function SettingsPage() {
           store: "unavailable",
         })
       );
+
+    api<AIStatus>("/api/admin/ai/status")
+      .then((status) => {
+        setAiStatus(status);
+        setAiError("");
+      })
+      .catch((error) => {
+        setAiError(error instanceof Error ? error.message : "AI status is unavailable.");
+      });
   }, []);
+
+  async function runAIProbe() {
+    if (probeBusy) return;
+    setProbeBusy(true);
+    setAiError("");
+    try {
+      const result = await api<AIProbe>("/api/admin/ai/probe", { method: "POST" });
+      setProbe(result);
+      const status = await api<AIStatus>("/api/admin/ai/status");
+      setAiStatus(status);
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : "The AI connectivity probe failed.");
+    } finally {
+      setProbeBusy(false);
+    }
+  }
 
   const services = [
     {
@@ -101,6 +167,11 @@ export default function SettingsPage() {
     if (h.api) return "API reached; database unavailable";
     return "Health check unavailable";
   }, [h, activeServices, totalServices, overallHealthy]);
+
+  const aiProvider = aiStatus?.providers[0] || null;
+  const aiStateLabel = !aiProvider
+    ? "Checking"
+    : aiProvider.state.replaceAll("-", " ");
 
   return (
     <AppShell role="ADMIN">
@@ -350,6 +421,74 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <section className="mt-5 overflow-hidden rounded-[20px] border border-[#E2E8F0] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.03)]" aria-labelledby="ai-status-title">
+          <div className="flex flex-col gap-4 border-b border-[#E8EDF2] px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id="ai-status-title" className="text-[16px] font-semibold text-[#102A43]">Ask AI configuration and connectivity</h2>
+              <p className="mt-1 text-[11px] text-[#8291A5]">
+                Configuration status does not prove connectivity. The explicit probe may consume provider quota and is cached and rate-limited.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={runAIProbe}
+              disabled={probeBusy || !aiProvider?.configured || !aiProvider.enabled}
+              className="h-10 rounded-xl border border-[#0D1220] bg-[#C9FF24] px-4 text-xs font-semibold text-[#0D1220] transition hover:bg-[#BDEA18] disabled:cursor-not-allowed disabled:border-[#D7DCE2] disabled:bg-[#EEF1F4] disabled:text-[#8A97A5]"
+            >
+              {probeBusy ? "Running probe…" : "Test provider connectivity"}
+            </button>
+          </div>
+
+          <div className="grid gap-4 p-5 lg:grid-cols-3">
+            <div className="rounded-2xl border border-[#E5EAF0] bg-[#F8FAFC] p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8291A5]">Configuration</p>
+              <p className="mt-3 text-sm font-semibold text-[#102A43]">
+                {aiProvider?.configured
+                  ? aiProvider.enabled ? "Provider configured and enabled" : "Provider configured but disabled"
+                  : aiProvider ? "Provider not configured" : "Checking…"}
+              </p>
+              <dl className="mt-3 space-y-2 text-[11px] text-[#64748B]">
+                <div className="flex justify-between gap-4"><dt>Order</dt><dd className="font-mono text-right">{aiStatus?.providerOrder.join(" → ") || "—"}</dd></div>
+                <div className="flex justify-between gap-4"><dt>Model</dt><dd className="font-mono text-right">{aiProvider?.model || "—"}</dd></div>
+                <div className="flex justify-between gap-4"><dt>Built-in guidance</dt><dd>{aiStatus ? (aiStatus.builtInGuidanceEnabled ? "Enabled" : "Disabled") : "—"}</dd></div>
+                <div className="flex justify-between gap-4"><dt>External record context</dt><dd>{aiStatus ? (aiStatus.externalRecordContextEnabled ? "Enabled" : "Disabled") : "—"}</dd></div>
+              </dl>
+            </div>
+
+            <div className="rounded-2xl border border-[#E5EAF0] bg-[#F8FAFC] p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8291A5]">Last known provider state</p>
+              <p className="mt-3 capitalize text-sm font-semibold text-[#102A43]">{aiStateLabel}</p>
+              <p className="mt-2 text-[11px] leading-5 text-[#64748B]">
+                {aiProvider?.lastAttempt
+                  ? `${aiProvider.lastAttempt.code} · ${aiProvider.lastAttempt.latencyMs} ms · ${new Date(aiProvider.lastAttempt.at).toLocaleString()}`
+                  : "No live provider attempt has been recorded in this server process."}
+              </p>
+              {aiProvider?.circuitOpenUntil && (
+                <p className="mt-2 text-[11px] font-medium text-amber-700">Circuit paused until {new Date(aiProvider.circuitOpenUntil).toLocaleString()}.</p>
+              )}
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${probe?.ok ? "border-emerald-200 bg-emerald-50" : probe ? "border-amber-200 bg-amber-50" : "border-[#E5EAF0] bg-[#F8FAFC]"}`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8291A5]">Connectivity probe</p>
+              <p className="mt-3 text-sm font-semibold text-[#102A43]">
+                {!probe ? "Not run in this page" : probe.ok ? "Provider responded" : probe.code || "Probe failed"}
+              </p>
+              <p className="mt-2 text-[11px] leading-5 text-[#64748B]">
+                {!probe
+                  ? "Use the button only when a live connectivity check is needed."
+                  : probe.ok
+                    ? `${probe.provider} · ${probe.model} · ${probe.latencyMs} ms${probe.cached ? " · cached" : ""}`
+                    : `${probe.message || "The provider did not respond successfully."}${probe.cached ? " Cached result." : ""}`}
+              </p>
+            </div>
+          </div>
+
+          {aiError && <p className="mx-5 mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700" role="alert">{aiError}</p>}
+          <p className="border-t border-[#E8EDF2] px-5 py-3 text-[10px] leading-5 text-[#8291A5]">
+            No key value is returned to this page. Record context remains separate and should stay disabled until institutional privacy and legal review is complete.
+          </p>
+        </section>
+
         {/* =====================================================
             DEPLOYMENT INFORMATION
         ====================================================== */}
@@ -466,7 +605,7 @@ export default function SettingsPage() {
                 </p>
 
                 <p className="text-[12px] font-mono text-[#C8F51A] mt-2">
-                  DEPLOY.md
+                  INSTALL.md
                 </p>
 
                 <p className="text-[10px] leading-5 text-[#9BAEB5] mt-2">
