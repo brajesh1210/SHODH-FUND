@@ -299,3 +299,19 @@ model Objection {
 
   @@index([grantId, status])
 }
+
+model Otp {
+  id         String   @id @default(cuid())
+  email      String
+  purpose    String
+  codeHash   String
+  attempts   Int      @default(0)
+  verified   Boolean  @default(false)
+  expiresAt  DateTime
+  lastSentAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([email, purpose, createdAt])
+  @@index([expiresAt])
+  @@index([email, purpose, verified, expiresAt])
+}
