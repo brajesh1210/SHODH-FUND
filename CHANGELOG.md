@@ -75,3 +75,10 @@ This tree contains the cumulative implementation based on the Phase 3 `main` com
 - Prisma Client generation and schema validation pass with Prisma 5.22.0.
 - The final frontend production build completes without warnings.
 - The guarded PostgreSQL suite covers deterministic seeding, role and ownership isolation, Ask AI provenance and records, financial invariants, and concurrency-sensitive workflows; it requires a migrated, seeded disposable PostgreSQL test database.
+## Phase 5 — staging and deployment isolation
+
+- Added a safe public `/api/ready` endpoint for platform health checks; it verifies database connectivity without exposing secrets, users, provider state, or detailed health metadata.
+- Added an explicit deployment-environment label so Render can run Node production mode while reporting a separate `staging` environment.
+- Added a narrowly guarded `db:seed:staging` command. It accepts only an explicitly marked, direct Neon database named `shodhfund_staging`; it refuses pooled URLs, production database names, local ambiguity, and unmarked remote targets.
+- Added free-tier staging/preview instructions and staging environment examples.
+- Updated example Gemini model defaults to the currently deployed `gemini-3.1-flash-lite`.

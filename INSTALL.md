@@ -41,13 +41,13 @@ Optional server-side Ask AI and Gemini OCR:
 ```env
 AI_PROVIDER_ORDER="gemini"
 GEMINI_API_KEY=""
-GEMINI_MODEL="gemini-2.5-flash-lite"
+GEMINI_MODEL="gemini-3.1-flash-lite"
 AI_TIMEOUT_MS="15000"
 AI_MAX_RETRIES="2"
 AI_BUILTIN_GUIDANCE_ENABLED="true"
 AI_RECORD_CONTEXT_ENABLED="false"
 AI_PROBE_CACHE_SECONDS="300"
-GEMINI_OCR_MODEL="gemini-2.5-flash"
+GEMINI_OCR_MODEL="gemini-3.1-flash-lite"
 ```
 
 Keep `GEMINI_API_KEY` on the backend only. The application sends it with the official `x-goog-api-key` header; never place it in browser variables, URLs, logs, or committed files. `GOOGLE_API_KEY` remains a compatibility alias. Built-in guidance works without Gemini. Keep external record context disabled until institutional privacy/legal review is complete; authenticated Ask Records remains deterministic and provider-independent. If context is approved and enabled, the server sends only a capped, role-scoped summary, redacts common personal identifiers, and treats all record text as untrusted data. Optional R2/S3 variables are reported as configuration only, not as a storage connectivity or upload test.
@@ -86,7 +86,11 @@ NEXT_PUBLIC_API_URL="http://localhost:4000"
 
 Open `http://localhost:3000`.
 
-## 3. Demo accounts
+## 3. Staging/demo environment
+
+Keep a staging/demo database separate from production. It can contain the seeded accounts and sample records; production must not. The practical free-tier setup, branch convention, guarded remote demo-seed command, Render settings, and Vercel Preview configuration are documented in [STAGING.md](STAGING.md).
+
+## 4. Demo accounts
 
 After `npm run db:seed`, use password `demo1234` with one of:
 
@@ -99,7 +103,7 @@ After `npm run db:seed`, use password `demo1234` with one of:
 
 Use the matching account for each role. Role access comes from the authenticated database account and cannot be changed from the browser.
 
-## 4. Production notes
+## 5. Production notes
 
 - Do not run the demo seed in production or staging.
 - Apply reviewed, checked-in migrations with `npm run db:migrate:deploy`.
@@ -110,7 +114,7 @@ Use the matching account for each role. Role access comes from the authenticated
 - Review backup, retention, logging, key rotation, incident response, and deployment controls for your environment.
 - ShodhFund's workflow checks do not constitute statutory, agency, audit, procurement, accounting, or security certification.
 
-## 5. Verification
+## 6. Verification
 
 ```bash
 # Frontend

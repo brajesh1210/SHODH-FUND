@@ -144,7 +144,7 @@ async function geminiExtract({ key, mime, buffer }) {
   const discovered = await discoverModels(key);
   const preferred = [
     configured,
-    'gemini-2.5-flash',
+    'gemini-3.1-flash-lite',
     ...discovered.filter((name) => /flash/i.test(name)),
     ...discovered
   ].filter(Boolean);

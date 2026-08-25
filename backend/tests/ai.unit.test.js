@@ -28,7 +28,7 @@ function successBody(text = 'Provider answer') {
       candidatesTokenCount: 7,
       totalTokenCount: 18
     },
-    modelVersion: 'gemini-2.5-flash-lite-001',
+    modelVersion: 'gemini-3.1-flash-lite-001',
     responseId: 'provider-response-1'
   };
 }
@@ -36,7 +36,7 @@ function successBody(text = 'Provider answer') {
 function provider(fetchImpl, overrides = {}) {
   return new GeminiProvider({
     apiKey: 'unit-test-key-never-sent-live',
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-3.1-flash-lite',
     timeoutMs: 5_000,
     maxRetries: 0,
     fetchImpl,
@@ -62,7 +62,7 @@ test('AI configuration is bounded, model-validated, and private-context off by d
     AI_MAX_RETRIES: '-7'
   });
   assert.deepEqual(config.providerOrder, ['gemini']);
-  assert.equal(config.gemini.model, 'gemini-2.5-flash-lite');
+  assert.equal(config.gemini.model, 'gemini-3.1-flash-lite');
   assert.equal(config.timeoutMs, 25_000);
   assert.equal(config.maxRetries, 0);
   assert.equal(config.builtInGuidanceEnabled, true);
@@ -111,11 +111,11 @@ test('Gemini uses x-goog-api-key, never a query key, and parses normalized succe
   assert.equal(result.ok, true);
   assert.equal(result.text, 'A safe answer');
   assert.equal(result.provider, 'gemini');
-  assert.equal(result.model, 'gemini-2.5-flash-lite');
+  assert.equal(result.model, 'gemini-3.1-flash-lite');
   assert.equal(result.requestId, 'google-request-1');
   assert.deepEqual(result.usage, { inputTokens: 11, outputTokens: 7, totalTokens: 18 });
   assert.equal(result.metadata.finishReason, 'STOP');
-  assert.equal(result.metadata.modelVersion, 'gemini-2.5-flash-lite-001');
+  assert.equal(result.metadata.modelVersion, 'gemini-3.1-flash-lite-001');
   assert.ok(!captured.url.includes('?'));
   assert.equal(captured.init.headers['x-goog-api-key'], 'unit-test-key-never-sent-live');
   assert.ok(!captured.init.body.includes('unit-test-key-never-sent-live'));

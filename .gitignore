@@ -12,3 +12,5 @@ backend/.env
 backend/data/db.json
 
 .env
+.env.staging
+.env.staging.local

@@ -14,6 +14,12 @@ demo-bills/           Exact-byte sample PDFs for the documented OCR fallback
 compose.yaml          Optional local PostgreSQL 17 service
 ```
 
+## Environments
+
+- **Production** uses authorized users and real data only. Do not run the demo seed there.
+- **Staging/demo** is a separate Neon database and Render/Vercel deployment that can use the deterministic demo seed.
+- Follow [STAGING.md](STAGING.md) for the free-tier isolation, migration, preview, and smoke-test flow.
+
 ## Requirements
 
 - Node.js 22.23.2 (pinned in `.nvmrc` and `.node-version`)

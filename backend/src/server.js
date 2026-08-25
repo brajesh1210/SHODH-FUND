@@ -6,12 +6,14 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const addFixedRoutes = require('./fixed-routes');
+const { deploymentEnvironment, publicReadinessPayload } = require('./runtime');
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT || 4000);
 const configuredJwtSecret = process.env.JWT_SECRET;
 const isProduction = process.env.NODE_ENV === 'production';
+const runtimeEnvironment = deploymentEnvironment(process.env);
 
 if (isProduction && (!configuredJwtSecret || configuredJwtSecret.length < 32)) {
   throw new Error('JWT_SECRET must be configured with at least 32 characters in production.');
@@ -42,6 +44,26 @@ app.use(
   })
 );
 app.use(express.json({ limit: '1mb' }));
+
+// Safe for platform health checks. Unlike /api/health, this endpoint returns no
+// configuration, users, database details, provider state, or secret-derived data.
+app.get('/api/ready', async (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.status(200).json(publicReadinessPayload({
+      NODE_ENV: process.env.NODE_ENV,
+      SHODHFUND_DEPLOYMENT_ENV: runtimeEnvironment
+    }));
+  } catch (error) {
+    console.error('Database readiness check failed:', error instanceof Error ? error.message : error);
+    return res.status(503).json({
+      status: 'unavailable',
+      service: 'shodhfund-api',
+      environment: runtimeEnvironment
+    });
+  }
+});
 
 function signToken(user) {
   return jwt.sign(

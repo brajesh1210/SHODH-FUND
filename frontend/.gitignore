@@ -12,3 +12,5 @@ node_modules
 *.tsbuildinfo
 next-env.d.ts
 coverage
+.env.staging
+.env.staging.local

@@ -5,8 +5,16 @@ const prisma = new PrismaClient();
 function assertSafeDemoTarget() {
   const rawUrl = process.env.DATABASE_URL;
   if (!rawUrl) throw new Error("DATABASE_URL is required for the demo seed.");
-  if (["production", "staging"].includes((process.env.NODE_ENV || "").toLowerCase())) {
-    throw new Error("The demo seed is disabled when NODE_ENV is production or staging.");
+
+  const nodeEnvironment = (process.env.NODE_ENV || "").toLowerCase();
+  const deploymentEnvironment = (process.env.SHODHFUND_DEPLOYMENT_ENV || "").toLowerCase();
+  const approvedStagingSeed = process.env.SHODHFUND_STAGING_SEED === "true";
+
+  if (nodeEnvironment === "production") {
+    throw new Error("The demo seed is disabled when NODE_ENV is production.");
+  }
+  if (nodeEnvironment === "staging" && !approvedStagingSeed) {
+    throw new Error("The demo seed is disabled when NODE_ENV is staging outside the explicit staging helper.");
   }
 
   const url = new URL(rawUrl);
@@ -14,10 +22,24 @@ function assertSafeDemoTarget() {
   if (["postgres", "template0", "template1"].includes(databaseName)) {
     throw new Error(`Refusing to seed the PostgreSQL system database ${databaseName}.`);
   }
+  if (["shodhfund_prod", "shodhfund_production"].includes(databaseName.toLowerCase())) {
+    throw new Error("Refusing to seed the named production ShodhFund database.");
+  }
+
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-  if (!isLocal && process.env.SHODHFUND_ALLOW_REMOTE_DEMO_SEED !== "true") {
+  if (isLocal) return;
+
+  const approvedRemoteStagingTarget =
+    approvedStagingSeed &&
+    deploymentEnvironment === "staging" &&
+    databaseName === "shodhfund_staging" &&
+    url.hostname.endsWith(".neon.tech") &&
+    !url.hostname.includes("-pooler") &&
+    process.env.SHODHFUND_ALLOW_REMOTE_DEMO_SEED === "true";
+
+  if (!approvedRemoteStagingTarget) {
     throw new Error(
-      "Refusing to seed a non-local database. Set SHODHFUND_ALLOW_REMOTE_DEMO_SEED=true only for an isolated development/test database."
+      "Refusing to seed a non-local database. Remote demo seeding is allowed only through the explicit staging helper against the direct Neon shodhfund_staging database."
     );
   }
 }

@@ -121,6 +121,17 @@ after(async () => {
   if (prisma) await prisma.$disconnect();
 });
 
+test('public readiness proves database availability without exposing private health details', async () => {
+  const ready = await request('/api/ready');
+  assert.equal(ready.status, 200, JSON.stringify(ready.body));
+  assert.deepEqual(ready.body, {
+    status: 'ok',
+    service: 'shodhfund-api',
+    environment: 'test'
+  });
+  assert.equal(ready.headers.get('cache-control'), 'no-store');
+});
+
 test('migration and deterministic seed enforce authoritative database invariants', async () => {
   assert.equal(await prisma.user.count(), 6);
   assert.equal(await prisma.grant.count({ where: { id: { startsWith: 'GR-' } } }), 6);
