@@ -3,7 +3,7 @@
 
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { createMemoryStorage, readB2Config, readR2Config } = require('../src/storage/object-storage');
+const { createMemoryStorage, createObjectStorage, readB2Config, readR2Config } = require('../src/storage/object-storage');
 const {
   MAX_DOCUMENT_BYTES,
   detectBillMime,
@@ -78,5 +78,26 @@ test('Backblaze B2 uses its S3 endpoint, key ID, application key, bucket and reg
   assert.equal(b2.provider, 'backblaze-b2');
   assert.equal(b2.forcePathStyle, true);
   assert.ok(!JSON.stringify({ endpoint: b2.endpoint, bucket: b2.bucket }).includes('application-secret'));
+});
+
+test('Backblaze B2 client disables optional SDK checksum headers and uses path-style requests', () => {
+  let options;
+  class TestClient {
+    constructor(value) { options = value; }
+  }
+  const storage = createObjectStorage({
+    OBJECT_STORAGE_PROVIDER: 'backblaze-b2',
+    B2_ENDPOINT: 'https://s3.us-west-004.backblazeb2.com',
+    B2_KEY_ID: 'b2-key-id',
+    B2_APPLICATION_KEY: 'b2-application-secret',
+    B2_BUCKET: 'shodhfund-staging-bills',
+    B2_REGION: 'us-west-004'
+  }, { S3Client: TestClient });
+  assert.equal(storage.kind, 'backblaze-b2');
+  assert.equal(options.forcePathStyle, true);
+  assert.equal(options.requestChecksumCalculation, 'WHEN_REQUIRED');
+  assert.equal(options.responseChecksumValidation, 'WHEN_REQUIRED');
+  assert.equal(options.credentials.accessKeyId, 'b2-key-id');
+  assert.equal(typeof options.credentials.secretAccessKey, 'string');
 });
 

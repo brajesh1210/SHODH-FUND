@@ -94,7 +94,7 @@ function createObjectStorage(env = process.env, dependencies = {}) {
   if (!storageConfig.configured) return null;
 
   const Client = dependencies.S3Client || S3Client;
-  const client = dependencies.client || new Client({
+  const clientOptions = {
     endpoint: storageConfig.endpoint,
     region: storageConfig.region,
     forcePathStyle: storageConfig.forcePathStyle,
@@ -102,7 +102,14 @@ function createObjectStorage(env = process.env, dependencies = {}) {
       accessKeyId: storageConfig.accessKeyId,
       secretAccessKey: storageConfig.secretAccessKey
     }
-  });
+  };
+  // B2's S3-compatible API does not require optional SDK checksum headers.
+  // Only calculate/validate checksums when an operation explicitly requires one.
+  if (storageConfig.provider === 'backblaze-b2') {
+    clientOptions.requestChecksumCalculation = 'WHEN_REQUIRED';
+    clientOptions.responseChecksumValidation = 'WHEN_REQUIRED';
+  }
+  const client = dependencies.client || new Client(clientOptions);
   const Put = dependencies.PutObjectCommand || PutObjectCommand;
   const Get = dependencies.GetObjectCommand || GetObjectCommand;
   const Delete = dependencies.DeleteObjectCommand || DeleteObjectCommand;

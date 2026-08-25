@@ -48,7 +48,7 @@ Staging:    shodhfund-staging-bills-<your-unique-suffix>
 Production: shodhfund-production-bills-<your-unique-suffix>
 ```
 
-Create a separate bucket-restricted B2 Application Key for each bucket with read/write/delete access. Use the bucket's S3 endpoint and its region, for example `https://s3.us-west-004.backblazeb2.com` and `us-west-004`.
+Create a separate bucket-restricted B2 Application Key for each bucket with read/write/delete access. If the Backblaze key form offers **Allow List All Bucket Names**, enable it for S3 SDK compatibility. Use the bucket's S3 endpoint and its region, for example `https://s3.us-west-004.backblazeb2.com` and `us-west-004`.
 
 Each Render service receives only its own B2 values:
 

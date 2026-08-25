@@ -98,3 +98,4 @@ This tree contains the cumulative implementation based on the Phase 3 `main` com
 - Added private document indicators/download links in PI expense records and Finance verification.
 - Added document upload/download, authorization, file-validation, storage-configuration, and byte-preservation test coverage.
 - Added no-card Backblaze B2 bucket/key and deployment guidance in `DOCUMENT-STORAGE.md`; Cloudflare R2 remains optional.
+- Configured the B2 SDK client to use path-style requests and avoid optional checksum headers that can be rejected by B2's S3-compatible API.
