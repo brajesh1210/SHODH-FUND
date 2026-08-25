@@ -87,6 +87,10 @@ The seed command creates the following demonstration accounts. Each uses the pas
 
 Accounts have one assigned role. To test another workspace, log out and sign in with that role's demonstration account; authenticated users cannot select an unauthorized workspace.
 
+## Database operations
+
+Use the checked-in migration history, test schema changes locally and on staging first, and use a current Neon production snapshot before a production schema change. The complete target checks, migration order, and recovery guidance are in [DATABASE-OPERATIONS.md](DATABASE-OPERATIONS.md).
+
 ## Database integration tests
 
 The backend test suite includes provider-unit coverage and starts the Express application on an ephemeral port for PostgreSQL-backed checks. It covers AI success/error/retry/circuit/probe paths, truthful provenance, deterministic record queries and PI cross-ownership denial, plus seed invariants, database constraints, authentication and role scopes, concurrent expense submissions, duplicate detection, competing finance decisions, stale correction writes, UC uniqueness and workflow transitions, owner-scoped notification reads, and audit-record access.
