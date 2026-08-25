@@ -2,6 +2,7 @@
 
 import { AppShell, StatusChip } from "@/components/AppShell";
 import { AddExpense } from "@/components/AddExpense";
+import { ExpenseDocumentLink } from "@/components/ExpenseDocumentLink";
 import { useList } from "@/lib/useList";
 import { inr, type Expense } from "@/lib/types";
 import {
@@ -279,6 +280,7 @@ export default function Page() {
                                       </span>
                                     </>
                                   )}
+                                  <ExpenseDocumentLink expense={e} compact />
                                 </div>
                                 <DecisionFeedback expense={e} />
                               </div>
@@ -310,11 +312,14 @@ export default function Page() {
                           </td>
 
                           <td className="px-4 py-4 text-right">
-                            {e.status === "CORRECTION_REQUESTED" ? (
-                              <AddExpense expense={e} onCreated={reload} compact />
-                            ) : (
-                              <span className="text-[11px] text-slate-300">—</span>
-                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              <ExpenseDocumentLink expense={e} compact />
+                              {e.status === "CORRECTION_REQUESTED" ? (
+                                <AddExpense expense={e} onCreated={reload} compact />
+                              ) : !e.document ? (
+                                <span className="text-[11px] text-slate-300">—</span>
+                              ) : null}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -352,6 +357,7 @@ export default function Page() {
                                 Invoice: {e.invoice}
                               </div>
                             )}
+                            <div className="mt-2"><ExpenseDocumentLink expense={e} compact /></div>
                           </div>
                         </div>
 

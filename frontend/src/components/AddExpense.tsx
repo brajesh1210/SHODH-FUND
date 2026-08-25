@@ -72,6 +72,8 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
   const [ocrProof, setOcrProof] = useState("");
   const [suggestedHead, setSuggestedHead] = useState("");
   const [error, setError] = useState("");
+  const [selectedBill, setSelectedBill] = useState<File | null>(null);
+  const [savedExpenseId, setSavedExpenseId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { data: grants, error: grantsError } = useList<Grant>("/api/grants");
 
@@ -123,6 +125,7 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
 
   async function extractBill(file?: File) {
     if (!file) return;
+    setSelectedBill(file);
     setOcrBusy(true);
     setError("");
     setOcrNotice("");
@@ -181,8 +184,59 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
     }
   }
 
+  async function uploadSelectedBill(expenseId: string) {
+    if (!selectedBill) return;
+    const payload = new FormData();
+    payload.append("file", selectedBill);
+    if (ocrSource) payload.append("ocrSource", ocrSource);
+    await api(`/api/expenses/${encodeURIComponent(expenseId)}/document`, {
+      method: "POST",
+      body: payload,
+    });
+  }
+
+  function closeAndReset() {
+    setOpen(false);
+    setForm(blankForm());
+    setBudgetHeads([]);
+    setSuggestedHead("");
+    setOcrNotice("");
+    setOcrSource("");
+    setOcrProof("");
+    setSelectedBill(null);
+    setSavedExpenseId(null);
+    setError("");
+  }
+
   async function submit() {
     if (busy) return;
+
+    // A previous create succeeded but the document storage request failed.
+    // Retrying must never create a duplicate expense.
+    if (savedExpenseId) {
+      if (!selectedBill) {
+        setError("Choose the bill again, then retry the private attachment upload.");
+        return;
+      }
+      setBusy(true);
+      setError("");
+      try {
+        await uploadSelectedBill(savedExpenseId);
+        closeAndReset();
+        onAdded?.();
+        onCreated?.();
+      } catch (cause: unknown) {
+        setError(
+          `Expense was already saved, but the bill could not be attached: ${
+            cause instanceof Error ? cause.message : "Storage upload failed"
+          }`
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     const amount = Number(form.amount);
     if (
       !form.grantId ||
@@ -200,7 +254,7 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
     setBusy(true);
     setError("");
     try {
-      await api(editing && expense ? `/api/expenses/${encodeURIComponent(expense.id)}` : "/api/expenses", {
+      const saved = await api<Expense>(editing && expense ? `/api/expenses/${encodeURIComponent(expense.id)}` : "/api/expenses", {
         method: editing ? "PUT" : "POST",
         body: JSON.stringify({
           grantId: form.grantId,
@@ -214,13 +268,25 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
           aiExtractionProof: ocrSource === "gemini" ? ocrProof : undefined,
         }),
       });
-      setOpen(false);
-      setForm(blankForm());
-      setBudgetHeads([]);
-      setSuggestedHead("");
-      setOcrNotice("");
-      setOcrSource("");
-      setOcrProof("");
+
+      if (selectedBill) {
+        try {
+          await uploadSelectedBill(saved.id);
+        } catch (cause: unknown) {
+          setSavedExpenseId(saved.id);
+          setError(
+            `Expense was saved, but the bill could not be attached: ${
+              cause instanceof Error ? cause.message : "Storage upload failed"
+            }. You can retry the attachment without creating another expense.`
+          );
+          // Show the saved expense in the register even if attachment storage is unavailable.
+          onAdded?.();
+          onCreated?.();
+          return;
+        }
+      }
+
+      closeAndReset();
       onAdded?.();
       onCreated?.();
     } catch (cause: unknown) {
@@ -244,6 +310,8 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
           setOcrNotice("");
           setOcrSource("");
           setOcrProof("");
+          setSelectedBill(null);
+          setSavedExpenseId(null);
           setSuggestedHead(expense?.head || "");
           setForm(formFromExpense(expense));
           setOpen(true);
@@ -259,7 +327,7 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
             <button
               type="button"
               className="absolute inset-0 cursor-default"
-              onClick={() => !busy && setOpen(false)}
+              onClick={() => !busy && closeAndReset()}
               aria-label="Close expense dialog"
             />
 
@@ -278,7 +346,7 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
                       : "Record spending against one of your grant budget heads."}
                   </p>
                 </div>
-                <button type="button" className="rounded-lg p-2 hover:bg-gray-100" onClick={() => !busy && setOpen(false)} aria-label="Close">
+                <button type="button" className="rounded-lg p-2 hover:bg-gray-100" onClick={() => !busy && closeAndReset()} aria-label="Close">
                   <X className="h-4 w-4" />
                 </button>
               </header>
@@ -298,6 +366,11 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
                     className="hidden"
                     onChange={(event) => extractBill(event.target.files?.[0])}
                   />
+                  {selectedBill && (
+                    <p className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[11px] leading-5 text-slate-600" role="status">
+                      Selected bill: <strong>{selectedBill.name}</strong>. A private copy will be attached after the expense is saved.
+                    </p>
+                  )}
                   {ocrNotice && (
                     <p className="mt-3 rounded-lg bg-white px-3 py-2 text-left text-[11px] leading-5 text-slate-600" role="status">
                       {ocrNotice}
@@ -342,9 +415,9 @@ export function AddExpense({ onAdded, onCreated, expense, compact = false }: Add
               </div>
 
               <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-white px-5 py-4">
-                <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary" disabled={busy} onClick={closeAndReset}>Cancel</button>
                 <button type="button" className="btn btn-primary" disabled={busy || ocrBusy} onClick={submit}>
-                  {busy ? "Saving…" : editing ? "Save & resubmit" : "Save Expense"}
+                  {busy ? "Saving…" : savedExpenseId ? "Retry bill attachment" : editing ? "Save & resubmit" : "Save Expense"}
                 </button>
               </footer>
             </section>

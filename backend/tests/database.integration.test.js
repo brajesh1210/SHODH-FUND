@@ -18,6 +18,7 @@ if (!/^shodhfund_(ci|test|phase3_clean_)/.test(databaseName)) {
 
 process.env.JWT_SECRET ||= 'phase-3-integration-test-secret-at-least-32-characters';
 process.env.CORS_ORIGIN ||= '';
+process.env.SHODHFUND_TEST_OBJECT_STORAGE = 'true';
 // Database-backed AI route tests must remain deterministic and never call a live provider.
 process.env.AI_PROVIDER_ORDER = '';
 process.env.AI_BUILTIN_GUIDANCE_ENABLED = 'true';
@@ -291,6 +292,55 @@ test('Ask AI provenance, record authorization, and diagnostics are truthful', as
   assert.equal(probe.status, 200, JSON.stringify(probe.body));
   assert.equal(probe.body.ok, false);
   assert.equal(probe.body.code, 'NOT_CONFIGURED');
+});
+
+test('private bill documents are magic-byte checked, role-scoped, and downloaded through the backend', async () => {
+  const pdf = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n');
+  const form = new FormData();
+  form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'phase7-test-bill.pdf');
+  form.append('ocrSource', 'sample-demo');
+
+  const uploaded = await fetch(`${apiBase}/api/expenses/EXP-1042/document`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.pi}` },
+    body: form
+  });
+  if (uploaded.status !== 201) {
+    assert.fail(`Document upload failed (${uploaded.status}): ${await uploaded.text()}`);
+  }
+  const uploadedBody = await uploaded.json();
+  assert.equal(uploadedBody.document.originalName, 'phase7-test-bill.pdf');
+  assert.equal(uploadedBody.document.mimeType, 'application/pdf');
+  assert.equal(uploadedBody.document.sizeBytes, pdf.length);
+  assert.equal(uploadedBody.document.ocrSource, 'sample-demo');
+  assert.match(uploadedBody.document.downloadUrl, /EXP-1042\/document$/);
+  assert.ok(!JSON.stringify(uploadedBody).includes('objectKey'));
+
+  const piExpenses = await authenticated('pi', '/api/expenses');
+  const piDocument = piExpenses.body.find((item) => item.id === 'EXP-1042')?.document;
+  assert.equal(piDocument?.id, uploadedBody.document.id);
+
+  const denied = await fetch(`${apiBase}/api/expenses/EXP-1042/document`, {
+    headers: { Authorization: `Bearer ${tokens.pi2}` }
+  });
+  assert.equal(denied.status, 403);
+
+  const download = await fetch(`${apiBase}/api/expenses/EXP-1042/document`, {
+    headers: { Authorization: `Bearer ${tokens.pi}` }
+  });
+  assert.equal(download.status, 200);
+  assert.equal(download.headers.get('content-type'), 'application/pdf');
+  assert.match(download.headers.get('content-disposition') || '', /attachment/);
+  assert.deepEqual(Buffer.from(await download.arrayBuffer()), pdf);
+
+  const invalid = new FormData();
+  invalid.append('file', new Blob([Buffer.from('not-a-pdf')], { type: 'application/pdf' }), 'fake.pdf');
+  const invalidResponse = await fetch(`${apiBase}/api/expenses/EXP-1042/document`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${tokens.pi}` },
+    body: invalid
+  });
+  assert.equal(invalidResponse.status, 400);
 });
 
 test('concurrent expense submissions preserve grant and budget-head totals', async () => {

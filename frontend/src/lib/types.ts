@@ -24,6 +24,18 @@ export type Grant = {
   ucDue: string;
 };
 
+export type ExpenseDocument = {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string;
+  ocrSource?: string | null;
+  ocrModel?: string | null;
+  createdAt?: string;
+  downloadUrl: string;
+};
+
 export type Expense = {
   id: string;
   grantId: string;
@@ -39,6 +51,7 @@ export type Expense = {
   gst: string;
   description?: string;
   submittedById?: string;
+  document?: ExpenseDocument | null;
   approvals?: Array<{
     id?: string;
     action: string;

@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell, StatusChip } from "@/components/AppShell";
+import { ExpenseDocumentLink } from "@/components/ExpenseDocumentLink";
 import { api } from "@/lib/api";
 import { useList } from "@/lib/useList";
 import { inr, type Expense } from "@/lib/types";
@@ -396,6 +397,7 @@ export default function Page() {
                             <p className="text-[10px] font-mono text-[#8291A5] mt-1">
                               {e.grantId}
                             </p>
+                            <div className="mt-2"><ExpenseDocumentLink expense={e} compact /></div>
                           </td>
 
                           {/* Amount */}
@@ -506,6 +508,7 @@ export default function Page() {
                             <p className="text-[9px] font-mono text-[#8291A5] mt-1">
                               {e.id}
                             </p>
+                            <div className="mt-2"><ExpenseDocumentLink expense={e} compact /></div>
                           </div>
                         </div>
 

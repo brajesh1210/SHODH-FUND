@@ -148,10 +148,10 @@ export default function SettingsPage() {
     },
     {
       key: "r2",
-      label: "Storage configuration",
+      label: "Private bill storage",
       value: !!h?.r2,
-      hint: "Whether optional R2/S3 environment variables are present; this is not a connectivity or upload test",
-      meta: "R2 / S3 variables",
+      hint: "Whether the backend has a private R2/S3 client configuration; use an authorized bill upload to prove object operations.",
+      meta: "Private R2 / S3 client",
       icon: "◇",
     },
   ];

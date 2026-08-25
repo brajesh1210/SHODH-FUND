@@ -107,7 +107,11 @@ Use the matching account for each role. Role access comes from the authenticated
 
 Follow [DATABASE-OPERATIONS.md](DATABASE-OPERATIONS.md) for target preflight, staging-first migration, snapshot, deployment, verification, and recovery steps. Production migrations use the direct/unpooled Neon URL through the checked-in `npm run db:migrate:deploy` wrapper; do not substitute `prisma db push`, reset, or demo seed commands.
 
-## 6. Production notes
+## 6. Private bill storage
+
+Use separate private Cloudflare R2 buckets and bucket-scoped R2 keys for staging and production. Follow [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md) for bucket configuration, the Phase 7 migration order, storage failure behavior, and authorized document download flow. Do not set R2 credentials in Vercel or frontend environment files.
+
+## 7. Production notes
 
 - Do not run the demo seed in production or staging.
 - Apply reviewed, checked-in migrations with `npm run db:migrate:deploy`.
@@ -118,7 +122,7 @@ Follow [DATABASE-OPERATIONS.md](DATABASE-OPERATIONS.md) for target preflight, st
 - Review backup, retention, logging, key rotation, incident response, and deployment controls for your environment.
 - ShodhFund's workflow checks do not constitute statutory, agency, audit, procurement, accounting, or security certification.
 
-## 7. Verification
+## 8. Verification
 
 ```bash
 # Frontend
