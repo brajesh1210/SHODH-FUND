@@ -82,3 +82,10 @@ This tree contains the cumulative implementation based on the Phase 3 `main` com
 - Added a narrowly guarded `db:seed:staging` command. It accepts only an explicitly marked, direct Neon database named `shodhfund_staging`; it refuses pooled URLs, production database names, local ambiguity, and unmarked remote targets.
 - Added free-tier staging/preview instructions and staging environment examples.
 - Updated example Gemini model defaults to the currently deployed `gemini-3.1-flash-lite`.
+
+## Phase 6 — database operations baseline
+
+- Added a database target preflight used by the migration deploy wrapper. Named production/staging Neon targets require the matching environment label, direct rather than pooled URL, and TLS; unknown remote targets are refused.
+- Added target-specific preflight commands plus a Windows-safe local Prisma CLI migration launcher.
+- Added unit coverage for production/staging/local target classification and migration safeguards.
+- Added a practical database operations runbook covering snapshots, staging-first migrations, deployment verification, forward-fix recovery, and explicit demo-data rules.

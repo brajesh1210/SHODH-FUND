@@ -103,7 +103,11 @@ After `npm run db:seed`, use password `demo1234` with one of:
 
 Use the matching account for each role. Role access comes from the authenticated database account and cannot be changed from the browser.
 
-## 5. Production notes
+## 5. Database migration and recovery workflow
+
+Follow [DATABASE-OPERATIONS.md](DATABASE-OPERATIONS.md) for target preflight, staging-first migration, snapshot, deployment, verification, and recovery steps. Production migrations use the direct/unpooled Neon URL through the checked-in `npm run db:migrate:deploy` wrapper; do not substitute `prisma db push`, reset, or demo seed commands.
+
+## 6. Production notes
 
 - Do not run the demo seed in production or staging.
 - Apply reviewed, checked-in migrations with `npm run db:migrate:deploy`.
@@ -114,7 +118,7 @@ Use the matching account for each role. Role access comes from the authenticated
 - Review backup, retention, logging, key rotation, incident response, and deployment controls for your environment.
 - ShodhFund's workflow checks do not constitute statutory, agency, audit, procurement, accounting, or security certification.
 
-## 6. Verification
+## 7. Verification
 
 ```bash
 # Frontend

@@ -63,6 +63,7 @@ $env:SHODHFUND_DEPLOYMENT_ENV = 'staging'
 
 npm ci
 npm run db:generate
+npm run db:preflight:staging
 npm run db:migrate:deploy
 npm run db:migrate:status
 npm run db:seed:staging
@@ -147,5 +148,6 @@ Before any future schema change:
 1. test the migration locally;
 2. push it to `staging`;
 3. run staging migration + browser smoke checks;
-4. merge to `main` only after it works;
-5. production Render applies the checked-in migration on its next deployment.
+4. create/confirm a current production Neon snapshot;
+5. merge to `main` only after it works;
+6. production Render applies the checked-in migration on its next deployment. See [DATABASE-OPERATIONS.md](DATABASE-OPERATIONS.md).
