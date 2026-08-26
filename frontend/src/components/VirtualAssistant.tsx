@@ -37,21 +37,18 @@ function pageContext(pathname: string) {
   if (pathname === "/") return "Public ShodhFund landing page";
   if (pathname === "/login") return "Login page";
   if (pathname === "/register") return "Registration page";
-  if (pathname === "/forgot-password") return "Password recovery page";
-  if (pathname === "/select-role") return "Role selection page";
+  if (pathname === "/forgot-password") return "Password recovery";
+  if (pathname === "/select-role") return "Role selection";
   if (pathname.includes("/dashboard/pi")) return "Principal Investigator dashboard";
   if (pathname.includes("/dashboard/finance")) return "Finance Officer dashboard";
   if (pathname.includes("/dashboard/admin")) return "Research Admin dashboard";
   if (pathname.includes("/dashboard/auditor")) return "Auditor dashboard";
-  if (pathname.includes("/grants")) return "Grant details";
-  if (pathname.includes("/expenses")) return "Expense management";
   return "ShodhFund application";
 }
 
 function Loader() {
-  // Inspired by SmoothUI / Unlumen loaders — restrained, premium, uses lemon accent
   return (
-    <div className={styles.loader} aria-label="ShodhFund AI is thinking">
+    <div className={styles.loader} aria-label="Thinking">
       <span className={styles.loaderLogo}>
         <Logo markOnly size={18} priority />
       </span>
@@ -137,7 +134,6 @@ export default function VirtualAssistant() {
     setInput("");
     setIsLoading(false);
     resetHeight();
-    window.setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const prepare = (text?: string) => {
@@ -151,16 +147,13 @@ export default function VirtualAssistant() {
     return { question, history: [...messages, userMessage] };
   };
 
-  const finish = () => {
-    setIsLoading(false);
-    window.setTimeout(() => textareaRef.current?.focus(), 0);
-  };
+  const finish = () => setIsLoading(false);
 
   const sendMessage = async (text?: string) => {
     const prepared = prepare(text);
     if (!prepared) return;
     try {
-      const response = await fetch("/api/chat", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -169,17 +162,11 @@ export default function VirtualAssistant() {
           history: prepared.history.map(({ role, content }) => ({ role, content })),
         }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
         setMessages((cur) => [
           ...cur,
-          {
-            id: Date.now() + 1,
-            role: "assistant",
-            mode: "unavailable",
-            content: data?.message || data?.error || "Assistant is temporarily unavailable.",
-            retryText: prepared.question,
-          },
+          { id: Date.now() + 1, role: "assistant", mode: "unavailable", content: data?.message || data?.error || "Assistant unavailable.", retryText: prepared.question },
         ]);
         return;
       }
@@ -196,13 +183,7 @@ export default function VirtualAssistant() {
     } catch {
       setMessages((cur) => [
         ...cur,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          mode: "unavailable",
-          content: "Could not reach ShodhFund AI Bot. Check connection and try again.",
-          retryText: prepared.question,
-        },
+        { id: Date.now() + 1, role: "assistant", mode: "unavailable", content: "Could not reach ShodhFund AI Bot.", retryText: prepared.question },
       ]);
     } finally {
       finish();
@@ -213,22 +194,16 @@ export default function VirtualAssistant() {
     const prepared = prepare();
     if (!prepared) return;
     try {
-      const response = await fetch("/api/ask", {
+      const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: prepared.question }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error || "Record query unavailable.");
-      setMessages((cur) => [
-        ...cur,
-        { id: Date.now() + 1, role: "assistant", mode: "record-data", content: data.answer, links: data.links },
-      ]);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Record query unavailable.");
+      setMessages((cur) => [...cur, { id: Date.now() + 1, role: "assistant", mode: "record-data", content: data.answer, links: data.links }]);
     } catch (e) {
-      setMessages((cur) => [
-        ...cur,
-        { id: Date.now() + 1, role: "assistant", mode: "unavailable", content: e instanceof Error ? e.message : "Record query unavailable." },
-      ]);
+      setMessages((cur) => [...cur, { id: Date.now() + 1, role: "assistant", mode: "unavailable", content: e instanceof Error ? e.message : "Record query unavailable." }]);
     } finally {
       finish();
     }
@@ -237,7 +212,7 @@ export default function VirtualAssistant() {
   const onInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
     const t = e.currentTarget;
     t.style.height = "auto";
-    t.style.height = `${Math.min(t.scrollHeight, 140)}px`;
+    t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
   };
 
   if (!isOpen) return null;
@@ -248,7 +223,7 @@ export default function VirtualAssistant() {
         <header className={styles.header}>
           <div className={styles.brand}>
             <span className={styles.brandMark}>
-              <Logo markOnly size={26} priority />
+              <Logo markOnly size={22} priority />
             </span>
             <div>
               <h2 id="shodhfund-ai-title">ShodhFund AI Bot</h2>
@@ -282,7 +257,7 @@ export default function VirtualAssistant() {
                 <Logo markOnly size={32} priority />
               </span>
               <h1>Ask ShodhFund</h1>
-              <p>Ask about grants, expenses, UCs, and compliance. Your messages appear on the right, bot replies on the left.</p>
+              <p>Your messages appear on the left, bot replies on the right. Fast, light, with ShodhFund logo.</p>
             </div>
           ) : (
             <div className={styles.messageList} aria-live="polite">
@@ -313,7 +288,6 @@ export default function VirtualAssistant() {
                   </div>
                 </article>
               ))}
-
               {isLoading && (
                 <article className={`${styles.messageRow} ${styles.assistantMessage}`}>
                   <span className={styles.avatar} aria-hidden="true">
