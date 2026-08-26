@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ArrowUp, Database, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowUp, Database, RotateCcw, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { OPEN_ASSISTANT_EVENT } from "@/lib/assistant";
 import styles from "./VirtualAssistant.module.css";
@@ -22,35 +22,22 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   mode?: AssistantMode;
-  source?: string;
-  model?: string | null;
-  recordAnswer?: string;
   links?: RecordLink[];
   retryText?: string;
 }
 
 const suggestions = [
-  {
-    label: "GFR compliance",
-    prompt: "What are the key GFR compliance checks for research grant expenses?",
-  },
-  {
-    label: "Utilization certificate",
-    prompt: "How do I prepare a Utilization Certificate in ShodhFund?",
-  },
-  {
-    label: "Expense workflow",
-    prompt: "Explain the expense verification workflow for a research grant.",
-  },
-  {
-    label: "Grant management",
-    prompt: "How can ShodhFund help me manage an active research grant?",
-  },
+  { label: "GFR compliance", prompt: "What are the key GFR compliance checks for research grant expenses?" },
+  { label: "Utilization certificate", prompt: "How do I prepare a Utilization Certificate in ShodhFund?" },
+  { label: "Expense workflow", prompt: "Explain the expense verification workflow for a research grant." },
+  { label: "Grant management", prompt: "How can ShodhFund help me manage an active research grant?" },
 ] as const;
 
 function pageContext(pathname: string) {
   if (pathname === "/") return "Public ShodhFund landing page";
   if (pathname === "/login") return "Login page";
+  if (pathname === "/register") return "Registration page";
+  if (pathname === "/forgot-password") return "Password recovery page";
   if (pathname === "/select-role") return "Role selection page";
   if (pathname.includes("/dashboard/pi")) return "Principal Investigator dashboard";
   if (pathname.includes("/dashboard/finance")) return "Finance Officer dashboard";
@@ -61,12 +48,21 @@ function pageContext(pathname: string) {
   return "ShodhFund application";
 }
 
-function provenanceLabel(message: Message) {
-  if (message.mode === "live-ai") return `Live AI${message.model ? ` · ${message.model}` : ""}`;
-  if (message.mode === "built-in-guidance") return "Built-in guidance · no live AI response";
-  if (message.mode === "record-data") return "Authorized ShodhFund records";
-  if (message.mode === "unavailable") return "Assistant unavailable";
-  return "ShodhFund assistant";
+function Loader() {
+  // Inspired by SmoothUI / Unlumen loaders — restrained, premium, uses lemon accent
+  return (
+    <div className={styles.loader} aria-label="ShodhFund AI is thinking">
+      <span className={styles.loaderLogo}>
+        <Logo markOnly size={18} priority />
+      </span>
+      <span className={styles.loaderDots} aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className={styles.loaderText}>ShodhFund AI Bot is thinking…</span>
+    </div>
+  );
 }
 
 export default function VirtualAssistant() {
@@ -92,32 +88,25 @@ export default function VirtualAssistant() {
       setIsOpen(true);
       window.setTimeout(() => textareaRef.current?.focus(), 50);
     };
-
     window.addEventListener(OPEN_ASSISTANT_EVENT, open);
     return () => window.removeEventListener(OPEN_ASSISTANT_EVENT, open);
   }, []);
 
   useEffect(() => {
     if (!isOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
         closeAssistant();
         return;
       }
-
       if (event.key !== "Tab" || !dialogRef.current) return;
       const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
+        dialogRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
       );
       if (!focusable.length) return;
-
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) {
@@ -128,21 +117,18 @@ export default function VirtualAssistant() {
         first.focus();
       }
     };
-
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [closeAssistant, isOpen]);
 
   useEffect(() => {
-    if (isOpen && (messages.length || isLoading)) {
-      messagesEndRef.current?.scrollIntoView({ block: "end" });
-    }
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [isLoading, isOpen, messages]);
 
-  const resetTextareaHeight = () => {
+  const resetHeight = () => {
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
@@ -150,31 +136,29 @@ export default function VirtualAssistant() {
     setMessages([]);
     setInput("");
     setIsLoading(false);
-    resetTextareaHeight();
+    resetHeight();
     window.setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
-  const prepareQuestion = (text?: string) => {
+  const prepare = (text?: string) => {
     const question = (text ?? input).trim();
     if (!question || isLoading) return null;
     const userMessage: Message = { id: Date.now(), role: "user", content: question };
-    const history = [...messages, userMessage];
-    setMessages(history);
+    setMessages((m) => [...m, userMessage]);
     setInput("");
     setIsLoading(true);
-    resetTextareaHeight();
-    return { question, history };
+    resetHeight();
+    return { question, history: [...messages, userMessage] };
   };
 
-  const finishRequest = () => {
+  const finish = () => {
     setIsLoading(false);
     window.setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const sendMessage = async (text?: string) => {
-    const prepared = prepareQuestion(text);
+    const prepared = prepare(text);
     if (!prepared) return;
-
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -186,54 +170,48 @@ export default function VirtualAssistant() {
         }),
       });
       const data = await response.json().catch(() => ({}));
-
       if (!response.ok) {
-        setMessages((current) => [
-          ...current,
+        setMessages((cur) => [
+          ...cur,
           {
             id: Date.now() + 1,
             role: "assistant",
             mode: "unavailable",
-            content: data?.message || data?.error || "Live AI and built-in guidance are unavailable.",
+            content: data?.message || data?.error || "Assistant is temporarily unavailable.",
             retryText: prepared.question,
           },
         ]);
         return;
       }
-
-      setMessages((current) => [
-        ...current,
+      setMessages((cur) => [
+        ...cur,
         {
           id: Date.now() + 1,
           role: "assistant",
-          mode: data.mode === "live-ai" ? "live-ai" : "built-in-guidance",
-          source: data.source,
-          model: data.model,
-          content: data.answer || data.reply || "I could not generate a response. Please try again.",
-          recordAnswer: data.records?.answer,
-          links: data.records?.links,
+          mode: data.mode,
+          content: data.answer || data.reply || "I could not generate a response.",
+          links: data.records?.links || data.links,
         },
       ]);
     } catch {
-      setMessages((current) => [
-        ...current,
+      setMessages((cur) => [
+        ...cur,
         {
           id: Date.now() + 1,
           role: "assistant",
           mode: "unavailable",
-          content: "The assistant could not reach the server. Check your connection and try again.",
+          content: "Could not reach ShodhFund AI Bot. Check connection and try again.",
           retryText: prepared.question,
         },
       ]);
     } finally {
-      finishRequest();
+      finish();
     }
   };
 
   const askRecords = async () => {
-    const prepared = prepareQuestion();
+    const prepared = prepare();
     if (!prepared) return;
-
     try {
       const response = await fetch("/api/ask", {
         method: "POST",
@@ -241,77 +219,58 @@ export default function VirtualAssistant() {
         body: JSON.stringify({ question: prepared.question }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error || "The record query is unavailable.");
-
-      setMessages((current) => [
-        ...current,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          mode: "record-data",
-          source: data.source,
-          content: data.answer,
-          links: data.links,
-        },
+      if (!response.ok) throw new Error(data?.error || "Record query unavailable.");
+      setMessages((cur) => [
+        ...cur,
+        { id: Date.now() + 1, role: "assistant", mode: "record-data", content: data.answer, links: data.links },
       ]);
-    } catch (error) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          mode: "unavailable",
-          content: error instanceof Error ? error.message : "The record query is unavailable.",
-        },
+    } catch (e) {
+      setMessages((cur) => [
+        ...cur,
+        { id: Date.now() + 1, role: "assistant", mode: "unavailable", content: e instanceof Error ? e.message : "Record query unavailable." },
       ]);
     } finally {
-      finishRequest();
+      finish();
     }
   };
 
-  const handleTextareaInput = (event: React.FormEvent<HTMLTextAreaElement>) => {
-    const target = event.currentTarget;
-    target.style.height = "auto";
-    target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+  const onInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    const t = e.currentTarget;
+    t.style.height = "auto";
+    t.style.height = `${Math.min(t.scrollHeight, 140)}px`;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div
-      className={styles.overlay}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="shodhfund-ai-title"
-      ref={dialogRef}
-    >
+    <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="shodhfund-ai-title" ref={dialogRef}>
       <section className={styles.chatShell}>
         <header className={styles.header}>
           <div className={styles.brand}>
-            <span className={styles.brandMark}><Logo light markOnly size={24} priority /></span>
+            <span className={styles.brandMark}>
+              <Logo markOnly size={26} priority />
+            </span>
             <div>
-              <h2 id="shodhfund-ai-title">ShodhFund AI</h2>
-              <p>Grant and compliance assistant</p>
+              <h2 id="shodhfund-ai-title">ShodhFund AI Bot</h2>
+              <p>Research funding assistant</p>
             </div>
           </div>
-
           <div className={styles.headerActions}>
             {messages.length > 0 && (
               <button type="button" onClick={clearChat} className={styles.resetButton}>
-                <RotateCcw aria-hidden="true" />
-                <span>New chat</span>
+                <RotateCcw aria-hidden="true" /> New chat
               </button>
             )}
-            <button type="button" onClick={closeAssistant} className={styles.closeButton} aria-label="Close ShodhFund AI">
+            <button type="button" onClick={closeAssistant} className={styles.closeButton} aria-label="Close">
               <X aria-hidden="true" />
             </button>
           </div>
         </header>
 
-        <nav className={styles.suggestions} aria-label="Suggested questions">
-          {suggestions.map((suggestion) => (
-            <button type="button" key={suggestion.label} onClick={() => sendMessage(suggestion.prompt)} disabled={isLoading}>
-              {suggestion.label}
+        <nav className={styles.suggestions} aria-label="Suggestions">
+          {suggestions.map((s) => (
+            <button key={s.label} type="button" onClick={() => sendMessage(s.prompt)} disabled={isLoading}>
+              {s.label}
             </button>
           ))}
         </nav>
@@ -319,40 +278,35 @@ export default function VirtualAssistant() {
         <div className={styles.conversation}>
           {messages.length === 0 && !isLoading ? (
             <div className={styles.emptyState}>
-              <Sparkles aria-hidden="true" />
-              <h1>How can I help?</h1>
-              <p>Choose live or built-in guidance, or query authenticated records directly.</p>
+              <span className={styles.emptyLogo}>
+                <Logo markOnly size={32} priority />
+              </span>
+              <h1>Ask ShodhFund</h1>
+              <p>Ask about grants, expenses, UCs, and compliance. Your messages appear on the right, bot replies on the left.</p>
             </div>
           ) : (
             <div className={styles.messageList} aria-live="polite">
-              {messages.map((message) => (
-                <article
-                  key={message.id}
-                  className={`${styles.messageRow} ${message.role === "user" ? styles.userMessage : styles.assistantMessage}`}
-                >
-                  <div className={`${styles.messageBubble} ${message.mode === "unavailable" ? styles.errorMessage : ""}`}>
-                    <strong>{message.role === "assistant" ? "ShodhFund AI" : "You"}</strong>
-                    {message.role === "assistant" && (
-                      <span className={styles.provenance}>{provenanceLabel(message)}</span>
-                    )}
-                    <p>{message.content}</p>
-                    {message.recordAnswer && message.recordAnswer !== message.content && (
-                      <div className={styles.recordData}>
-                        <b>Authoritative record result</b>
-                        <p>{message.recordAnswer}</p>
-                      </div>
-                    )}
-                    {message.links && message.links.length > 0 && (
-                      <div className={styles.recordLinks} aria-label="Authoritative record links">
-                        {message.links.slice(0, 6).map((link) => (
+              {messages.map((m) => (
+                <article key={m.id} className={`${styles.messageRow} ${m.role === "user" ? styles.userMessage : styles.assistantMessage}`}>
+                  {m.role === "assistant" && (
+                    <span className={styles.avatar} aria-hidden="true">
+                      <Logo markOnly size={16} priority />
+                    </span>
+                  )}
+                  <div className={`${styles.messageBubble} ${m.mode === "unavailable" ? styles.errorMessage : ""}`}>
+                    <strong>{m.role === "assistant" ? "ShodhFund AI Bot" : "You"}</strong>
+                    <p>{m.content}</p>
+                    {m.links && m.links.length > 0 && (
+                      <div className={styles.recordLinks}>
+                        {m.links.slice(0, 6).map((link) => (
                           <Link key={`${link.type}-${link.id}-${link.href}`} href={link.href} onClick={closeAssistant}>
                             {link.label}
                           </Link>
                         ))}
                       </div>
                     )}
-                    {message.retryText && (
-                      <button type="button" className={styles.retryButton} onClick={() => sendMessage(message.retryText)} disabled={isLoading}>
+                    {m.retryText && (
+                      <button type="button" className={styles.retryButton} onClick={() => sendMessage(m.retryText)} disabled={isLoading}>
                         <RotateCcw aria-hidden="true" /> Retry
                       </button>
                     )}
@@ -361,10 +315,13 @@ export default function VirtualAssistant() {
               ))}
 
               {isLoading && (
-                <article className={`${styles.messageRow} ${styles.assistantMessage}`} aria-label="ShodhFund AI is generating a response">
+                <article className={`${styles.messageRow} ${styles.assistantMessage}`}>
+                  <span className={styles.avatar} aria-hidden="true">
+                    <Logo markOnly size={16} priority />
+                  </span>
                   <div className={`${styles.messageBubble} ${styles.loadingMessage}`}>
-                    <strong>ShodhFund AI</strong>
-                    <p>Preparing response…</p>
+                    <strong>ShodhFund AI Bot</strong>
+                    <Loader />
                   </div>
                 </article>
               )}
@@ -378,25 +335,25 @@ export default function VirtualAssistant() {
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onInput={handleTextareaInput}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
+              onChange={(e) => setInput(e.target.value)}
+              onInput={onInput}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
                   sendMessage();
                 }
               }}
-              placeholder="Message ShodhFund AI"
-              aria-label="Message ShodhFund AI"
+              placeholder="Ask about your grants, expenses, UCs..."
+              aria-label="Message ShodhFund AI Bot"
               rows={1}
               disabled={isLoading}
             />
-            <button type="button" onClick={() => sendMessage()} disabled={!input.trim() || isLoading} aria-label="Send message">
+            <button type="button" onClick={() => sendMessage()} disabled={!input.trim() || isLoading} aria-label="Send">
               <ArrowUp aria-hidden="true" />
             </button>
           </div>
           <div className={styles.composerNote}>
-            <span>AI may be inaccurate and cannot approve or change records. Verify important decisions.</span>
+            <span>ShodhFund AI Bot may be inaccurate. Verify financial decisions.</span>
             {canAskRecords && (
               <button type="button" onClick={askRecords} disabled={!input.trim() || isLoading}>
                 <Database aria-hidden="true" /> Ask Records
