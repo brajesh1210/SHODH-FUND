@@ -30,8 +30,8 @@ const demos = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("arjun.sharma@university.edu");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,9 +42,19 @@ export default function LoginPage() {
     fetch("/api/ready")
       .then((r) => r.json())
       .then((data) => {
-        if (data?.environment === "production") setIsProductionEnv(true);
+        const isProd = data?.environment === "production";
+        setIsProductionEnv(isProd);
+        if (!isProd) {
+          // Only prefill demo in non-production (staging/local) for convenience
+          setEmail((e) => e || "arjun.sharma@university.edu");
+          setPassword((p) => p || "demo1234");
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        // If readiness unavailable (local dev without backend), show demo
+        setEmail((e) => e || "arjun.sharma@university.edu");
+        setPassword((p) => p || "demo1234");
+      });
   }, []);
 
   useEffect(() => {
