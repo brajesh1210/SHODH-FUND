@@ -1,151 +1,427 @@
-# ShodhFund
+<div align="center">
 
-ShodhFund is a research-grant workflow application for Indian universities and research institutions. It provides role-scoped grant, expense, budget, utilization-certificate, review, anomaly, notification, calendar, reporting, and audit-record workflows.
+# 🌟 ShodhFund — Research Funding, Simplified.
 
-The application provides workflow and review aids. It does not by itself certify GFR, procurement, accounting, statutory, agency, audit, or information-security compliance.
+### 🎓 AI-Powered Grant Lifecycle Management for Indian Universities
 
-## Project structure
+[![Next.js](https://img.shields.io/badge/Next.js-15.5-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Express](https://img.shields.io/badge/Express-4.21-green?style=for-the-badge&logo=express)](https://expressjs.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-5.22-2D3748?style=for-the-badge&logo=prisma)](https://prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-316192?style=for-the-badge&logo=postgresql)](https://postgresql.org/)
+[![Vercel](https://img.shields.io/badge/Vercel-Hobby-black?style=for-the-badge&logo=vercel)](https://vercel.com/)
+[![Render](https://img.shields.io/badge/Render-Free-46E3B7?style=for-the-badge&logo=render)](https://render.com/)
+[![Neon](https://img.shields.io/badge/Neon-Free-00E599?style=for-the-badge&logo=neon)](https://neon.tech/)
 
-```text
-frontend/             Next.js application and same-origin API/session proxy
-backend/              Express API and Prisma/PostgreSQL data layer
-backend/prisma/       Schema, checked-in migrations, and deterministic demo seed
-demo-bills/           Exact-byte sample PDFs for the documented OCR fallback
-compose.yaml          Optional local PostgreSQL 17 service
+**🚀 Live Production:** [shodh-fund-sigma.vercel.app](https://shodh-fund-sigma.vercel.app)  
+**🧪 Staging Demo:** [shodh-fund-git-staging...vercel.app](https://shodh-fund-git-staging-brajeshupadhyay1210-8075s-projects.vercel.app)  
+**🔧 Backend:** [shodhfund-backend.onrender.com](https://shodhfund-backend.onrender.com)
+
+*Less administration. More research momentum.*
+
+</div>
+
+---
+
+## 📖 Table of Contents
+
+- [🎯 What is ShodhFund?](#-what-is-shodhfund)
+- [✨ Features](#-features)
+- [🏗️ Architecture](#️-architecture)
+- [🔐 Roles & Workspaces](#-roles--workspaces)
+- [🔄 Complete Workflow](#-complete-workflow)
+- [🧠 AI Implementation](#-ai-implementation)
+- [💾 Database & Security](#-database--security)
+- [📦 Tech Stack](#-tech-stack)
+- [🚀 Quick Start](#-quick-start)
+- [🌍 Free Tier Deployment](#-free-tier-deployment)
+- [📧 Email OTP Auth](#-email-otp-auth)
+- [📎 Private Bill Storage](#-private-bill-storage)
+- [🧪 Testing](#-testing)
+- [📂 Project Structure](#-project-structure)
+- [🔒 Security](#-security)
+- [🤝 Contributing](#-contributing)
+
+---
+
+## 🎯 What is ShodhFund?
+
+**ShodhFund** is an end-to-end **research grant lifecycle platform** built for **Indian universities and research institutions**. It replaces scattered Excel sheets, email approvals, and last-minute audit panic with one connected, **role-aware, record-based, human-reviewed** workspace.
+
+> **Research. Comply. Impact.** — From sanction letter to Utilization Certificate, without the chaos.
+
+### 💡 The Problem We Solve
+
+- 📊 Grant tracking in Excel graveyards
+- 🧾 Bill verification without evidence
+- ⚠️ GFR compliance checked after spending
+- 📑 UC generation takes weeks
+- 🔍 Audit trail missing
+- 👥 No role-based visibility
+
+### ✅ Our Solution
+
+- 🏦 Live budget tracking by head
+- 🤖 AI bill OCR + compliance checks
+- 🛡️ GFR-aware review aids
+- 📄 One-click UC draft generation
+- 🔗 Complete sanction-to-spend trail
+- 👨‍🔬 Role-scoped dashboards
+
+---
+
+## ✨ Features
+
+### 🏦 Grant Management
+- 📝 Register sanctions with auto-generated codes
+- 💰 Split budget heads (Equipment, Consumables, Travel, etc.)
+- 📈 Live utilization & balance tracking
+- 📅 UC due date monitoring
+
+### 🧾 Expense Management
+- 📤 Add expenses against owned grants
+- 🔍 Vendor, invoice, GSTIN, amount validation
+- 📎 Private bill attachment (Backblaze B2)
+- 🔄 Correction workflow (Submit → Approve/Reject/Correction → Resubmit)
+
+### 🤖 AI Automation
+- **Bill OCR:** Gemini extracts vendor, invoice, amount, date, GSTIN from PDFs/images
+- **Ask ShodhFund AI Bot:** Full-screen chat, user right, bot left, logo + loader, no Gemini branding
+- **Ask Records:** Deterministic DB queries for exact grant/expense values
+- **Anomaly Detection:** Duplicate invoice & budget-cap flags
+
+### 📑 UC Generation
+- 🗓️ Indian Financial Year scoped (1 Apr - 31 Mar)
+- 🧮 Calculated from approved expenses only
+- 📊 Head-wise breakdown
+- 📥 PDF download (qualified working draft)
+
+### 🔔 Smart Notifications
+- 📬 UC due, approval pending, anomaly alerts
+- ✅ Mark individual / Mark all as read (real DB updates)
+- 👤 Owner-scoped
+
+### 📊 Analytics & Reports
+- 💹 Role-scoped stats (sanctioned, spent, utilization)
+- 📥 CSV exports (scoped by ownership)
+- 🏫 Department & NIRF demo reports
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+Browser
+  ↓
+Vercel (Next.js 15.5, frontend)
+  ↓ same-origin /api proxy (HttpOnly cookie sf_session)
+Render (Express 4.21, backend)
+  ├─→ Neon PostgreSQL 17 (pooled + direct URLs)
+  ├─→ Gemini 3.1 Flash-Lite (live-ai)
+  ├─→ Backblaze B2 (private bill storage, S3-compatible)
+  └─→ Brevo (email OTP, HTTPS API, any recipient)
 ```
 
-## Environments
+**Why this split?**
+- 🔒 No secrets in browser bundle
+- 🍪 JWT in HttpOnly, Secure, SameSite cookie
+- 🔄 Vercel → Render proxy preserves bytes for PDF/CSV
+- 🌏 Singapore region for low latency (Render + Neon)
 
-- **Production** uses authorized users and real data only. Do not run the demo seed there.
-- **Staging/demo** is a separate Neon database and Render/Vercel deployment that can use the deterministic demo seed.
-- Follow [STAGING.md](STAGING.md) for the free-tier isolation, migration, preview, and smoke-test flow.
+---
 
-## Requirements
+## 🔐 Roles & Workspaces
 
-- Node.js 22.23.2 (pinned in `.nvmrc` and `.node-version`)
-- npm 10.9.8 (bundled with the pinned Node release)
-- PostgreSQL 17 (the same major version used by local Compose and CI)
-- A production `JWT_SECRET` containing at least 32 characters
+| Role | Emoji | Access | Key Pages |
+|------|-------|--------|-----------|
+| **PI** | 👨‍🔬 | Own grants only | My Grants, Expenses, UC Generator, Milestones |
+| **FINANCE** | 💼 | Institution-wide review | Grant Management, Verify, Budget, UC Verify, Anomalies |
+| **ADMIN** | 🏫 | Full oversight | All Grants, Departments, NIRF, Reports, Settings, Users |
+| **AUDITOR** | 🔍 | Read + compliance | Assignments, Compliance, Trail, Objections |
 
-## Local setup
+> 🔑 **Security:** Role comes from authenticated DB account, not browser localStorage. PI cannot access another PI's data.
 
-### 1. Start PostgreSQL
+---
 
-If Docker Compose is available, start the repository's real PostgreSQL 17 service from the repository root:
+## 🔄 Complete Workflow
+
+```
+1. 📧 Register → OTP (Brevo) → Verify → Role select → Account created
+   ↓
+2. 🔑 Login → /select-role → Auto redirect to assigned workspace
+   ↓
+3. 🏦 PI creates Grant → Budget Head auto-created
+   ↓
+4. 🧾 PI adds Expense + Bill PDF → OCR extracts → Private B2 upload
+   ↓
+5. 💼 Finance reviews → Approve / Reject (reason) / Correction Request
+   ↓
+6. 📑 PI generates UC (FY) → Finance reviews → Under Review → Approved
+   ↓
+7. 🔍 Auditor checks compliance, anomalies, audit trail
+   ↓
+8. 🔔 Notifications + 📊 Reports + 📥 Exports
+```
+
+---
+
+## 🧠 AI Implementation
+
+### 💬 Ask ShodhFund AI Bot
+- **Provider:** Gemini 3.1 Flash-Lite (current stable, multimodal)
+- **Auth:** `x-goog-api-key` header, never in URL/logs
+- **Features:**
+  - Bounded timeout 15s, 2 retries with exponential backoff + jitter
+  - Circuit breaker after 3 failures
+  - Truthful labels: `Live AI` vs `Built-in guidance` (never mislabels template as AI)
+  - No model name exposed in UI (only "ShodhFund AI Bot")
+  - Fast loader: logo + 3 dots bounce (dot 2 lemon yellow) — CSS only
+  - User right, Bot left, light UI, no black/yellow border
+
+### 🔍 Ask Records (Deterministic, No AI)
+- Works with **all AI providers disabled**
+- Role & ownership scoped, never crosses PI boundaries
+- Exact amounts, statuses, links are DB-authoritative
+
+### 🧾 Bill OCR
+- Gemini extraction when `GEMINI_API_KEY` configured
+- Fallback: exact SHA-256 match for 4 bundled sample PDFs only (labeled as demo)
+- No filename trick — renamed arbitrary file won't trigger demo
+- Proof token (HMAC) binds extracted fields to submitter for 10 min
+
+---
+
+## 💾 Database & Security
+
+### 📊 Schema (Prisma)
+```
+User (id, email unique, password bcrypt, name, role, dept)
+Grant (grantCode unique, sanctionedAmount, spentAmount, piId, status)
+BudgetHead (grantId + name unique, allocatedAmount, spentAmount)
+Expense (grantId, budgetHeadId, vendorName, invoiceNumber, complianceStatus)
+ExpenseDocument (objectKey unique, sha256, isCurrent, ocrSource, uploadedById)
+UtilizationCertificate (grantId + financialYear unique, status workflow)
+Anomaly, Milestone, Approval, AuditLog, Notification, Objection, Otp
+```
+
+### 🔒 Security Highlights
+- 🔑 Passwords: bcrypt 12, no plaintext compare
+- 🍪 Session: HttpOnly, Secure, SameSite cookie `sf_session`, 8h expiry
+- 🚧 Production requires `JWT_SECRET` >= 32 chars
+- 🛡️ Role + ownership checks on every route
+- 📎 Private B2: magic-byte validation, 8MB max, object key never exposed, 403 for other PI
+- 📧 OTP: bcrypt hash, 10min expiry, 60s cooldown, 5 attempts, 5/hour, IP limit 20/hour, anti-enumeration
+- 🚫 No raw Prisma errors to client
+- 📝 Audit logs for login, register, expense decisions, UC, document upload/download, AI probe
+
+---
+
+## 📦 Tech Stack
+
+| Layer | Tech | Version | Purpose |
+|-------|------|---------|---------|
+| Frontend | Next.js | 15.5 | App Router, 35 routes |
+| UI | Tailwind CSS | 4 | Styling |
+| Icons | Lucide React | latest | Icons |
+| Backend | Express | 4.21 | API |
+| DB | Prisma + PostgreSQL | 5.22 + 17 | ORM + DB |
+| AI | Gemini | 3.1 Flash-Lite | Chat + OCR |
+| Storage | Backblaze B2 | S3-compatible | Private bills, no card, 10GB free |
+| Email | Brevo | HTTPS API | OTP any recipient, 300/day free |
+| Deploy | Vercel + Render + Neon | Hobby + Free + Free | Free tier pilot |
+
+---
+
+## 🚀 Quick Start
+
+### 1️⃣ Start PostgreSQL
 
 ```bash
 docker compose up -d postgres
+docker compose ps # should be healthy
 ```
 
-Its local-only credentials match `backend/.env.example`, and its named volume preserves development data between restarts. Alternatively, create a PostgreSQL database and user yourself and put that connection in `backend/.env`.
-
-### 2. Migrate, seed, and start the backend
+### 2️⃣ Backend
 
 ```bash
 cd backend
 npm ci
 cp .env.example .env
-# PowerShell alternative: Copy-Item .env.example .env
-# Edit .env when not using the provided Compose database.
+# Edit .env: DATABASE_URL, JWT_SECRET (32+ chars), GEMINI_API_KEY, B2_*, BREVO_*
 npm run db:generate
 npm run db:migrate:deploy
 npm run db:migrate:status
-npm run db:seed
-npm run dev
+npm run db:seed # local only, creates 6 demo users with demo1234
+npm run dev # http://localhost:4000
 ```
 
-The checked-in initial migration is authoritative; normal setup does not use `prisma db push`. When intentionally developing a schema change, use `npm run db:migrate:dev -- --name <migration-name>` against a disposable development database and review the generated SQL before committing it.
-
-The demo seed uses reserved IDs and upserts, so rerunning it reconciles its own records without deleting unrelated rows. It refuses to run when `NODE_ENV` is `production` or `staging`, against PostgreSQL system databases, or against a non-local host unless an explicit remote-demo override is supplied. Never enable that override for shared, staging, production, or otherwise valuable data.
-
-The API listens on `http://localhost:4000` by default.
-
-### 3. Start the frontend
-
-In a second terminal:
+### 3️⃣ Frontend
 
 ```bash
 cd frontend
 npm ci
 cp .env.example .env.local
-# PowerShell alternative: Copy-Item .env.example .env.local
-npm run dev
+# NEXT_PUBLIC_API_URL=http://localhost:4000
+npm run dev # http://localhost:3000
 ```
 
-Open `http://localhost:3000`. Browser requests go through the frontend's same-origin `/api` proxy; the JWT is held in an HttpOnly session cookie rather than browser-readable storage.
+### 👥 Demo Accounts (local/staging only, password: demo1234)
 
-## Demo access
+- 👨‍🔬 PI: arjun.sharma@university.edu, priya.verma@university.edu, kumar.iyer@university.edu
+- 💼 Finance: rohit.mehta@university.edu
+- 🏫 Admin: meera.iyer@university.edu
+- 🔍 Auditor: sk.verma@university.edu
 
-The seed command creates the following demonstration accounts. Each uses the password `demo1234`:
+---
 
-- Principal Investigator: `arjun.sharma@university.edu`
-- Principal Investigator: `priya.verma@university.edu`
-- Principal Investigator: `kumar.iyer@university.edu`
-- Finance Officer: `rohit.mehta@university.edu`
-- Research Admin: `meera.iyer@university.edu`
-- Auditor: `sk.verma@university.edu`
+## 🌍 Free Tier Deployment
 
-Accounts have one assigned role. To test another workspace, log out and sign in with that role's demonstration account; authenticated users cannot select an unauthorized workspace.
+| Component | Provider | Plan | Cost | Sleep? |
+|-----------|----------|------|------|--------|
+| Frontend | Vercel | Hobby | ₹0 | No, always awake |
+| Backend | Render | Free | ₹0 | Yes, 15min inactivity → 30-60s cold start |
+| DB | Neon | Free | ₹0 | Scale to zero, 0.5GB, 1 snapshot |
+| Storage | Backblaze B2 | Free | ₹0 | No, 10GB |
+| Email | Brevo | Free | ₹0 | 300/day, HTTPS |
 
-## Database operations
+**Production URLs:**
+- Prod: https://shodh-fund-sigma.vercel.app
+- Prod API: https://shodhfund-backend.onrender.com
+- Staging (permanent branch URL): https://shodh-fund-git-staging-brajeshupadhyay1210-8075s-projects.vercel.app
+- Staging API: https://shodhfund-staging-backend.onrender.com
 
-Use the checked-in migration history, test schema changes locally and on staging first, and use a current Neon production snapshot before a production schema change. The complete target checks, migration order, and recovery guidance are in [DATABASE-OPERATIONS.md](DATABASE-OPERATIONS.md).
+**Why allow sleep?**
+- 1 always-awake service = 720h/month (within 750h free) ✅
+- 2 always-awake = 1440h → quota exceed ❌
+- We accept cold start to keep free tier for other projects.
 
-## Database integration tests
+---
 
-The backend test suite includes provider-unit coverage and starts the Express application on an ephemeral port for PostgreSQL-backed checks. It covers AI success/error/retry/circuit/probe paths, truthful provenance, deterministic record queries and PI cross-ownership denial, plus seed invariants, database constraints, authentication and role scopes, concurrent expense submissions, duplicate detection, competing finance decisions, stale correction writes, UC uniqueness and workflow transitions, owner-scoped notification reads, and audit-record access.
+## 📧 Email OTP Auth
 
-The suite intentionally mutates its database. Use only a newly created disposable database whose name begins with `shodhfund_test`, `shodhfund_ci`, or `shodhfund_phase3_clean_`. It also requires both safety flags below and refuses any database name outside that policy.
-
-Example for a fresh `shodhfund_test_local` database when using Compose:
-
-```bash
-docker compose exec postgres createdb -U shodhfund shodhfund_test_local
-cd backend
-export DATABASE_URL="postgresql://shodhfund:shodhfund-local-only@localhost:5432/shodhfund_test_local?schema=public"
-export NODE_ENV=test
-export SHODHFUND_TEST_DATABASE=true
-export JWT_SECRET="local-test-secret-at-least-32-characters"
-npm run db:migrate:deploy
-npm run db:seed
-npm run db:seed
-npm test
+**Flow:**
+```
+Register: name, email, role → Send OTP (Brevo) → Verify (6-digit, 10min) → Password → Create
+Login: email + password → workspace
+Forgot: email → OTP → new password → login
 ```
 
-Create the disposable database before running those commands. In PowerShell, use `$env:NAME="value"` instead of `export NAME="value"`. CI performs the same migration, double-seed, and runtime test sequence with PostgreSQL 17.
+**Security:**
+- OTP bcrypt hash, never plaintext
+- 10min expiry, 60s resend cooldown, 5 attempts, 5/hour per email
+- IP rate limit 20/hour
+- Verified OTP valid 30min for next step
+- Anti-enumeration for password reset (generic response)
 
-## Private bill storage
+**Brevo Setup (any recipient, no card):**
+1. https://app.brevo.com → free account
+2. Senders & Domains → Add sender → verify your Gmail
+3. SMTP & API → API Keys → Generate → `xkeysib-...`
+4. Security → Authorized IPs → Deactivate for API keys (allow Render IP)
+5. Render env:
+```
+EMAIL_PROVIDER=brevo
+EMAIL_FROM=ShodhFund <your-verified-email@gmail.com>
+BREVO_API_KEY=xkeysib-...
+```
 
-Phase 7 supports private, authenticated expense-bill storage through a S3-compatible backend adapter. Backblaze B2 is the no-card default; Cloudflare R2 is optional. Configure separate staging and production buckets only after reviewing [DOCUMENT-STORAGE.md](DOCUMENT-STORAGE.md). Storage credentials stay on the backend; Vercel and browser code never receive them.
+---
 
-## Ask AI and authenticated records
+## 📎 Private Bill Storage
 
-Ask AI uses a server-only Gemini provider when `AI_PROVIDER_ORDER` and `GEMINI_API_KEY` are configured. Responses identify themselves as live AI or built-in guidance; if both modes are unavailable, the API returns an explicit `503 AI_PROVIDER_UNAVAILABLE` response. Admin settings separates configuration state from a cached, rate-limited connectivity probe. It never returns key values.
+- **Provider:** Backblaze B2 private bucket (no card, S3-compatible)
+- **Bucket:** Separate prod & staging, e.g., `shodhfund-production-bills-...` (Private)
+- **Key:** Bucket-scoped app key, Read+Write+Delete
+- **Endpoint:** `https://s3.us-west-004.backblazeb2.com` (must have https://, no quotes, no trailing /)
+- **Region:** `us-west-004` (middle of endpoint)
+- **Validation:** Magic bytes (PDF/JPG/PNG/WebP), 8MB max, SHA-256 digest
+- **Access:** PI own only, Finance/Admin/Auditor via expense policy, 403 for other PI
+- **Routes:** POST /api/expenses/:id/document, GET /api/expenses/:id/document (same-origin, no public URL)
 
-Authenticated Ask Records queries rehydrated-user-scoped PostgreSQL data deterministically and works with all external AI providers disabled. Structured record values and links remain authoritative and separate from optional model prose. `AI_RECORD_CONTEXT_ENABLED` defaults to `false`; do not enable external record context until institutional privacy/legal review is complete. When explicitly enabled, external context is capped, role-scoped, redacts common personal identifiers, and is delimited and treated as untrusted record data. See `INSTALL.md` and `backend/.env.example` for the bounded timeout, retry, model, fallback, probe-cache, and context settings.
+---
 
-## Optional OCR provider
-
-Set `GEMINI_API_KEY` or `GOOGLE_API_KEY` in `backend/.env` to enable Gemini bill extraction. Without a working provider, extraction fails honestly except for the exact bundled demonstration PDFs documented in `demo-bills/README.md`. The fallback matches file SHA-256 digests, not filenames, and is labeled as sample data.
-
-OCR is an input aid only. Users must review all extracted fields before submitting an expense. The current expense workflow records extracted fields but does not persist the uploaded source bill.
-
-## Health and optional configuration
-
-The protected Admin health view checks database connectivity and reports whether JWT, OCR-provider, and optional R2/S3 environment variables are configured. The separate Admin Ask AI panel reports sanitized provider configuration and last-attempt state; its explicit connectivity probe is cached and rate-limited because it may consume provider quota. Provider/storage configuration labels are not external connectivity, upload, uptime, or security tests.
-
-## Validation commands
+## 🧪 Testing
 
 ```bash
+# Frontend
 cd frontend
 npm run lint
 npm run typecheck
-npm run build
+npm run build # 35 routes
 
-cd ../backend
+# Backend syntax
+cd backend
 npm run check:syntax
 npm run db:generate
 npm run db:validate
 npm run db:migrate:status
-# npm test requires the guarded, migrated, seeded disposable database described above.
+
+# DB integration (requires disposable DB + safety flags)
+# See DATABASE-OPERATIONS.md for guarded procedure
+npm test
 ```
+
+---
+
+## 📂 Project Structure
+
+```
+frontend/
+  src/app/ (page.tsx landing, login, register, forgot-password, dashboard/*, grants/[id], api/*)
+  src/components/ (AppShell, VirtualAssistant, Logo, AddExpense, ExpenseDocumentLink)
+  src/lib/ (api, session, types, download, format)
+  public/landing/ (logos, university images)
+backend/
+  src/server.js (Express + security headers + /api/ready)
+  src/fixed-routes.js (all API routes, auth, OTP, grants, expenses, UC, etc.)
+  src/storage/ (object-storage.js, documents.js)
+  src/ai/ (config, errors, guidance, prompts, providers/gemini, retrieval, service)
+  src/middleware/ (security, rate-limit)
+  src/email.js, otp.js, ocr.js, runtime.js
+  prisma/schema.prisma, migrations/*, seed.ts
+  scripts/ (db-target, db-preflight, migrate-deploy, seed-staging)
+  tests/ (ai.unit, storage.unit, migration-preflight.unit, staging.unit, database.integration)
+demo-bills/ (4 exact-byte sample PDFs)
+compose.yaml (optional local PG 17)
+STAGING.md, DATABASE-OPERATIONS.md, DOCUMENT-STORAGE.md, PRODUCTION-CHECKLIST.md
+```
+
+---
+
+## 🔒 Security
+
+- No `NEXT_PUBLIC_` secrets
+- No secrets in Git, bundles, logs, screenshots
+- Security headers: nosniff, DENY frame, strict referrer, no camera/mic
+- CORS exact origin only
+- Rate limiting in-memory (free tier), Redis later for distributed
+- Audit logs, safe errors, no stack leak
+- See [SECURITY.md](frontend/src/app/security/page.tsx) and [PRIVACY.md](frontend/src/app/privacy/page.tsx) for implementation details (not certification)
+
+---
+
+## 🤝 Contributing
+
+```bash
+git switch -c feat/your-feature
+# Make changes, ensure lint/type/build pass
+git push -u origin feat/your-feature
+# Open PR to main, wait for CI green
+```
+
+**Rules:**
+- Never force-push to main
+- Never commit .env, keys, node_modules, .next
+- Test migrations on disposable DB first
+- Never run demo seed on production
+
+---
+
+<div align="center">
+
+### 💙 Built with love for Indian research ecosystem
+
+**Less administration. More research momentum.** 🚀
+
+[🌐 Live Demo](https://shodh-fund-sigma.vercel.app) · [📧 Contact](mailto:hello@shodhfund.in) · [🔒 Security](https://shodh-fund-sigma.vercel.app/security) · [🔐 Privacy](https://shodh-fund-sigma.vercel.app/privacy)
+
+</div>
