@@ -168,8 +168,8 @@
 
     .sf-landing .hero {
       position: relative;
-      min-height: 880px;
-      padding: 166px 0 92px;
+      min-height: 760px;
+      padding: 94px 0 72px;
       display: flex;
       align-items: center;
       overflow: hidden;
@@ -668,7 +668,7 @@
       .sf-landing.menu-open .menu-toggle span { opacity: 0; }
       .sf-landing.menu-open .menu-toggle::before { transform: translateY(6px) rotate(45deg); }
       .sf-landing.menu-open .menu-toggle::after { transform: translateY(-6px) rotate(-45deg); }
-      .sf-landing .hero { padding-top: 154px; }
+      .sf-landing .hero { padding-top: 90px; }
       .sf-landing .hero-grid { grid-template-columns: 1fr; }
       .sf-landing .hero-copy { padding-top: 0; }
       .sf-landing .hero-description { max-width: 720px; }
@@ -709,7 +709,7 @@
       .sf-landing .nav { width: calc(100% - 16px); min-height: 62px; padding: 8px 8px 8px 15px; border-radius: 15px; }
       .sf-landing .brand { width: 155px; }
       .sf-landing .menu-toggle { width: 44px; height: 44px; }
-      .sf-landing .hero { padding: 126px 0 66px; }
+      .sf-landing .hero { padding: 86px 0 56px; }
       .sf-landing .hero-title { font-size: clamp(56px, 16vw, 62px); line-height: .91; }
       .sf-landing .lime-word { padding: 7px 13px 10px; border-radius: 11px; }
       .sf-landing .hero-description { margin-top: 22px; font-size: 16px; line-height: 1.65; }
