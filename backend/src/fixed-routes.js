@@ -11,6 +11,7 @@ const {
   validateBillFile
 } = require('./storage/documents');
 const { sendEmail, otpEmail, readEmailConfig } = require('./email');
+const { limiters } = require('./middleware/rate-limit');
 const {
   randomOtp,
   hashOtp,
@@ -493,7 +494,7 @@ module.exports = function addFixedRoutes({
     }
   }
 
-  app.post('/api/auth/send-otp', safeAsync(async (req, res) => {
+  app.post('/api/auth/send-otp', limiters.otp, safeAsync(async (req, res) => {
     const rawEmail = normalizeEmail(req.body?.email);
     const purpose = validatePurpose(req.body?.purpose || 'REGISTRATION');
     if (!rawEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawEmail)) {
@@ -589,7 +590,7 @@ module.exports = function addFixedRoutes({
     });
   }));
 
-  app.post('/api/auth/verify-otp', safeAsync(async (req, res) => {
+  app.post('/api/auth/verify-otp', limiters.otp, safeAsync(async (req, res) => {
     const email = normalizeEmail(req.body?.email);
     const purpose = validatePurpose(req.body?.purpose || 'REGISTRATION');
     const code = String(req.body?.code || '').trim();
@@ -625,7 +626,7 @@ module.exports = function addFixedRoutes({
     res.json({ ok: true, verified: true, message: 'OTP verified. You can now complete registration or password reset.' });
   }));
 
-  app.post('/api/auth/register', safeAsync(async (req, res) => {
+  app.post('/api/auth/register', limiters.otp, safeAsync(async (req, res) => {
     const email = normalizeEmail(req.body?.email);
     const name = cleanText(req.body?.name, 120);
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
@@ -682,7 +683,7 @@ module.exports = function addFixedRoutes({
     res.status(201).json({ token, user: publicUser(user) });
   }));
 
-  app.post('/api/auth/forgot-password', safeAsync(async (req, res) => {
+  app.post('/api/auth/forgot-password', limiters.otp, safeAsync(async (req, res) => {
     // Alias to send-otp with PASSWORD_RESET purpose, but with anti-enumeration
     const email = normalizeEmail(req.body?.email);
     if (!email) return res.status(400).json({ error: 'Email is required.' });
@@ -735,7 +736,7 @@ module.exports = function addFixedRoutes({
     res.json({ ok: true, message: 'If an account exists, an OTP has been sent.', expiresAt: expiresAt.toISOString(), ...(devOtp ? { devOtp, devMode: true } : {}) });
   }));
 
-  app.post('/api/auth/reset-password', safeAsync(async (req, res) => {
+  app.post('/api/auth/reset-password', limiters.otp, safeAsync(async (req, res) => {
     const email = normalizeEmail(req.body?.email);
     const code = String(req.body?.code || '').trim();
     const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
@@ -793,7 +794,7 @@ module.exports = function addFixedRoutes({
     res.json({ ok: true, message: 'Password reset successful. You can now log in.' });
   }));
 
-  app.post('/api/auth/login', safeAsync(async (req, res) => {
+  app.post('/api/auth/login', limiters.login, safeAsync(async (req, res) => {
     const email = cleanText(req.body?.email, 320).toLowerCase();
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
@@ -2601,7 +2602,7 @@ module.exports = function addFixedRoutes({
     return requestId;
   }
 
-  app.post('/api/chat', optionalAuth, safeAsync(async (req, res) => {
+  app.post('/api/chat', optionalAuth, limiters.chat, safeAsync(async (req, res) => {
     const message = cleanText(req.body?.message, 2000);
     if (!message) return res.status(400).json({ error: 'A message is required.' });
 
@@ -2624,7 +2625,7 @@ module.exports = function addFixedRoutes({
       });
   }));
 
-  app.post('/api/ask', ...auth, safeAsync(async (req, res) => {
+  app.post('/api/ask', ...auth, limiters.ask, safeAsync(async (req, res) => {
     const question = cleanText(req.body?.q ?? req.body?.question, 2000);
     if (!question) return res.status(400).json({ error: 'A question is required.' });
 
@@ -2671,7 +2672,7 @@ module.exports = function addFixedRoutes({
     })
   );
 
-  app.get('/api/export/expenses.csv', ...auth, safeAsync(async (req, res) => {
+  app.get('/api/export/expenses.csv', ...auth, limiters.export, safeAsync(async (req, res) => {
     const expenses = await prisma.expense.findMany({
       where: expenseScope(req.user),
       include: {
@@ -2729,6 +2730,7 @@ module.exports = function addFixedRoutes({
     '/api/expenses/:id/document',
     ...auth,
     requireRole(ROLE.PI, ROLE.ADMIN),
+    limiters.upload,
     runSingleBillUpload,
     safeAsync(async (req, res) => {
       if (storage?.invalidEndpoint) {
@@ -2914,6 +2916,7 @@ module.exports = function addFixedRoutes({
     '/api/ocr/extract',
     ...auth,
     requireRole(ROLE.PI, ROLE.ADMIN),
+    limiters.upload,
     runSingleBillUpload,
     safeAsync(async (req, res) => {
       if (!req.file?.buffer) {

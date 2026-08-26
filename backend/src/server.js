@@ -8,6 +8,7 @@ const { PrismaClient } = require('@prisma/client');
 const addFixedRoutes = require('./fixed-routes');
 const { createMemoryStorage, createObjectStorage } = require('./storage/object-storage');
 const { deploymentEnvironment, publicReadinessPayload } = require('./runtime');
+const { securityHeaders, requestLogger } = require('./middleware/security');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -34,6 +35,8 @@ const configuredOrigins = String(process.env.CORS_ORIGIN || '')
   .filter(Boolean);
 
 app.disable('x-powered-by');
+app.use(securityHeaders());
+app.use(requestLogger());
 app.use(
   cors({
     credentials: false,
@@ -106,7 +109,6 @@ async function optionalAuth(req, _res, next) {
   try {
     claims = verifyToken(authorization.slice(7));
   } catch {
-    // Optional authentication deliberately continues without a user.
     return next();
   }
 
@@ -117,8 +119,6 @@ async function optionalAuth(req, _res, next) {
     });
     if (user) req.user = user;
   } catch (error) {
-    // Public assistant guidance remains available if authenticated context cannot
-    // be rehydrated. Never trust stale JWT identity or role claims as a fallback.
     console.error('Optional session rehydration failed:', error instanceof Error ? error.message : error);
   }
   return next();
@@ -202,7 +202,7 @@ app.use((error, _req, res, _next) => {
 let server;
 if (require.main === module) {
   server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`ShodhFund API listening on port ${PORT}`);
+    console.log(`ShodhFund API listening on port ${PORT} [${runtimeEnvironment}]`);
   });
 
   const shutdown = (signal) => {
