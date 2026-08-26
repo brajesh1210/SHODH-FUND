@@ -153,6 +153,13 @@ export default function LoginPage() {
               </div>
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -6 }}>
+              <span />
+              <Link href="/forgot-password" style={{ fontSize: 11, color: '#4C5F13', fontWeight: 600, textDecoration: 'underline' }}>
+                Forgot password?
+              </Link>
+            </div>
+
             {error && (
               <div className={styles.error} role="alert">
                 <span aria-hidden="true">!</span>
@@ -193,6 +200,9 @@ export default function LoginPage() {
             </div>
           </div>
 
+          <p style={{ marginTop: 18, fontSize: 11, textAlign: 'center', color: '#6B7280' }}>
+            New to ShodhFund? <Link href="/register" style={{ textDecoration: 'underline', fontWeight: 700, color: '#0D1220' }}>Create an account</Link>
+          </p>
           <p className={styles.support}>Need access help? <a href="mailto:hello@shodhfund.in">Contact ShodhFund support</a></p>
         </div>
       </section>
