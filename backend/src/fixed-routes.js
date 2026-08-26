@@ -562,10 +562,14 @@ module.exports = function addFixedRoutes({
         emailSent = true;
       } catch (e) {
         console.error('OTP email failed:', e instanceof Error ? e.message : e, e?.details || '');
+        // Provide clear guidance for Resend onboarding limit
+        const msg = String(e instanceof Error ? e.message : e).toLowerCase();
+        if (msg.includes('onboarding@resend.dev') || msg.includes('only send to your own email') || msg.includes('validation_error')) {
+          return res.status(400).json({ error: 'Resend onboarding@resend.dev can only send to your own email. Verify a domain in Resend or switch to Brevo SMTP API for any recipient.' });
+        }
         if (!isDev) {
           return res.status(503).json({ error: 'Email service is temporarily unavailable. Try again later.' });
         }
-        // In dev, fall back to returning code
         devOtp = code;
       }
     } else {
@@ -713,6 +717,10 @@ module.exports = function addFixedRoutes({
         await sendEmail({ to: email, subject: payload.subject, html: payload.html, textBody: payload.textBody });
       } catch (e) {
         console.error('Password reset OTP email failed:', e instanceof Error ? e.message : e);
+        const msg = String(e instanceof Error ? e.message : e).toLowerCase();
+        if (msg.includes('onboarding@resend.dev') || msg.includes('only send to your own email') || msg.includes('validation_error')) {
+          return res.status(400).json({ error: 'Resend onboarding@resend.dev can only send to your own email. Verify a domain in Resend or switch to Brevo for any recipient.' });
+        }
         if (!isDev) return res.status(503).json({ error: 'Email service unavailable.' });
         devOtp = code;
       }
