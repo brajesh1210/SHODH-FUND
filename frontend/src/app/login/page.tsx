@@ -36,6 +36,19 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [isProductionEnv, setIsProductionEnv] = useState(false);
+
+  useEffect(() => {
+    // Detect deployment environment via public readiness endpoint (no auth, no secrets)
+    fetch("/api/ready")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.environment === "production") setIsProductionEnv(true);
+      })
+      .catch(() => {
+        // If readiness unavailable, keep demo visible for local dev
+      });
+  }, []);
 
   useEffect(() => {
     api<User>("/api/auth/me")
@@ -173,26 +186,34 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className={styles.demoSection}>
-            <div className={styles.divider}><span>Demo access</span></div>
-            <p>Choose a role to fill its working demo credentials.</p>
-            <div className={styles.demoGrid}>
-              {demos.map((account) => {
-                const Icon = account.icon;
-                const selected = email === account.email && password === account.password;
-                return (
-                  <button
-                    type="button"
-                    key={account.email}
-                    onClick={() => selectDemo(account)}
-                    className={selected ? styles.selectedDemo : ""}
-                    aria-label={`Use ${account.label} demo credentials`}
-                  >
-                    <span><Icon aria-hidden="true" /></span>
-                    <div>
-                      <strong>{account.short}</strong>
-                      <small>{account.email}</small>
-                    </div>
+          {!isProductionEnv && (
+            <div className={styles.demoSection}>
+              <div className={styles.divider}><span>Demo access</span></div>
+              <p>Choose a role to fill its working demo credentials.</p>
+              <div className={styles.demoGrid}>
+                {demos.map((account) => {
+                  const Icon = account.icon;
+                  const selected = email === account.email && password === account.password;
+                  return (
+                    <button
+                      type="button"
+                      key={account.email}
+                      onClick={() => selectDemo(account)}
+                      className={selected ? styles.selectedDemo : ""}
+                      aria-label={`Use ${account.label} demo credentials`}
+                    >
+                      <span><Icon aria-hidden="true" /></span>
+                      <div>
+                        <strong>{account.short}</strong>
+                        <small>{account.email}</small>
+                      </div>
+                      {selected && <Check className={styles.demoCheck} aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
                     {selected && <Check className={styles.demoCheck} aria-hidden="true" />}
                   </button>
                 );
