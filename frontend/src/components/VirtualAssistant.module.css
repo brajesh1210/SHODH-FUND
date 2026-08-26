@@ -204,11 +204,11 @@
 }
 
 .userMessage {
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 
 .assistantMessage {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .messageBubble {

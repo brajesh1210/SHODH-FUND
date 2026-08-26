@@ -49,9 +49,6 @@ function pageContext(pathname: string) {
 function Loader() {
   return (
     <div className={styles.loader} aria-label="Thinking">
-      <span className={styles.loaderLogo}>
-        <Logo markOnly size={18} priority />
-      </span>
       <span className={styles.loaderDots} aria-hidden="true">
         <i />
         <i />
@@ -253,9 +250,7 @@ export default function VirtualAssistant() {
         <div className={styles.conversation}>
           {messages.length === 0 && !isLoading ? (
             <div className={styles.emptyState}>
-              <span className={styles.emptyLogo}>
-                <Logo markOnly size={32} priority />
-              </span>
+
               <h1>Ask ShodhFund</h1>
               <p>Your messages appear on the left, bot replies on the right. Fast, light, with ShodhFund logo.</p>
             </div>
@@ -263,11 +258,7 @@ export default function VirtualAssistant() {
             <div className={styles.messageList} aria-live="polite">
               {messages.map((m) => (
                 <article key={m.id} className={`${styles.messageRow} ${m.role === "user" ? styles.userMessage : styles.assistantMessage}`}>
-                  {m.role === "assistant" && (
-                    <span className={styles.avatar} aria-hidden="true">
-                      <Logo markOnly size={16} priority />
-                    </span>
-                  )}
+
                   <div className={`${styles.messageBubble} ${m.mode === "unavailable" ? styles.errorMessage : ""}`}>
                     <strong>{m.role === "assistant" ? "ShodhFund AI Bot" : "You"}</strong>
                     <p>{m.content}</p>
@@ -290,9 +281,6 @@ export default function VirtualAssistant() {
               ))}
               {isLoading && (
                 <article className={`${styles.messageRow} ${styles.assistantMessage}`}>
-                  <span className={styles.avatar} aria-hidden="true">
-                    <Logo markOnly size={16} priority />
-                  </span>
                   <div className={`${styles.messageBubble} ${styles.loadingMessage}`}>
                     <strong>ShodhFund AI Bot</strong>
                     <Loader />
